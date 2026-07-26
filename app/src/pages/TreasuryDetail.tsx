@@ -25,8 +25,8 @@ export default function TreasuryDetail() {
   const { chainMeta } = useChain();
 
   useSeo({
-    title: community ? `${community.name} treasury` : "Treasury",
-    description: "Treasury attestations, payment confirmations, and rule-governed releases.",
+    title: community ? `${community.name} group funds` : "Group funds",
+    description: "Group fund confirmations, payment records, and rule-governed releases.",
     path: id ? `/dashboard/${id}/treasury` : undefined,
     noIndex: true,
   });
@@ -38,9 +38,9 @@ export default function TreasuryDetail() {
           <CommunityBanner type={community?.type} className="mb-8 p-5 md:p-6">
           <header className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
             <div>
-              <p className="font-mono text-xs uppercase tracking-widest text-primary">Treasury</p>
-              <h1 className="mt-2 font-display text-3xl font-bold text-foreground">{community?.name ?? "Community"} Treasury</h1>
-              <p className="mt-2 text-sm text-muted-foreground">Inflows, releases, payment attestations, and public audit trail.</p>
+              <p className="font-mono text-xs uppercase tracking-widest text-primary">Group account</p>
+              <h1 className="mt-2 font-display text-3xl font-bold text-foreground">{community?.name ?? "Community"} group funds</h1>
+              <p className="mt-2 text-sm text-muted-foreground">Contributions, approved releases, payment confirmations, and the public record.</p>
             </div>
             <button
               type="button"
@@ -58,7 +58,7 @@ export default function TreasuryDetail() {
           <div className="baraza-card mb-6 overflow-hidden p-5 md:p-6">
             <div className="flex flex-col justify-between gap-6 md:flex-row md:items-center">
               <div>
-                <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Treasury balance</p>
+                <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Group funds available</p>
                 <p className="mt-2 font-display text-4xl font-bold text-primary">
                   {formatRailAmountFromKes(community?.fundBalance ?? 1248500, chainMeta)}
                 </p>
@@ -80,7 +80,7 @@ export default function TreasuryDetail() {
 
           <div className="mb-6 grid gap-6 lg:grid-cols-[0.62fr_0.38fr]">
             <div className="baraza-card p-5">
-              <h2 className="mb-5 font-mono text-xs uppercase tracking-widest text-muted-foreground">Inflows and Payment Attestations</h2>
+              <h2 className="mb-5 font-mono text-xs uppercase tracking-widest text-muted-foreground">Contributions and payment confirmations</h2>
               <div className="space-y-3">
                 {attestations.map(([ref, type, amount, status]) => (
                   <div key={ref} className="flex flex-col justify-between gap-3 rounded-lg border border-border bg-background/45 p-4 sm:flex-row sm:items-center">
@@ -103,7 +103,7 @@ export default function TreasuryDetail() {
             </div>
 
             <div className="baraza-card p-5">
-              <h2 className="mb-5 font-mono text-xs uppercase tracking-widest text-primary">Treasury Release Queue</h2>
+              <h2 className="mb-5 font-mono text-xs uppercase tracking-widest text-primary">Pending fund releases</h2>
               <div className="space-y-3">
                 {["PROP-042: Q4 Welfare Payout", "PROP-044: Contract Audit", "PROP-045: Member Emergency"].map((item) => (
                   <div key={item} className="rounded-lg border border-primary/20 bg-primary/8 p-4">
@@ -116,7 +116,7 @@ export default function TreasuryDetail() {
           </div>
 
           <div className="baraza-card overflow-x-auto p-5">
-            <h2 className="mb-5 font-mono text-xs uppercase tracking-widest text-muted-foreground">Executed Treasury Releases</h2>
+            <h2 className="mb-5 font-mono text-xs uppercase tracking-widest text-muted-foreground">Completed fund releases</h2>
             <table className="w-full min-w-[680px] text-left text-sm">
               <thead className="border-b border-border font-mono text-xs uppercase tracking-widest text-muted-foreground">
                 <tr>
@@ -153,7 +153,7 @@ export default function TreasuryDetail() {
               <ShieldCheck className="h-4 w-4 text-primary" />
               Audit trail
             </h2>
-            <p className="text-sm text-muted-foreground">Payment confirmations, proposal outcomes, and treasury releases are represented here as safe public summaries.</p>
+            <p className="text-sm text-muted-foreground">Payment confirmations, decision outcomes, and fund releases are represented here as safe public summaries.</p>
           </div>
         </div>
       </section>

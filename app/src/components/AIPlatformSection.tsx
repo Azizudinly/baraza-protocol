@@ -7,8 +7,8 @@ const platformLinks = [
   {
     icon: Compass,
     label: "Discover",
-    title: "Find active DAOs",
-    detail: "Browse DAOs and communities — filter by type and treasury rail.",
+    title: "Find active communities",
+    detail: "Browse communities — filter by type and payment rail.",
     to: "/communities",
   },
   {
@@ -21,7 +21,7 @@ const platformLinks = [
   {
     icon: LayoutDashboard,
     label: "Operate",
-    title: "Run treasury decisions",
+    title: "Run group fund decisions",
     detail: "Track members, proposals, balances, and releases from the dashboard.",
     to: "/profile",
   },
@@ -49,14 +49,14 @@ export default function AIPlatformSection() {
               Website, operating platform, and AI guide in one clean flow.
             </h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
-              Visitors can understand the model, organisers can launch a DAO, and members can
+              Visitors can understand the model, organisers can launch a community, and members can
               vote and track funds — Akili is available when someone needs a next step.
             </p>
 
             <div className="mt-5 flex flex-col gap-2 sm:flex-row">
               <button
                 type="button"
-                onClick={() => open("Help me set up my DAO on Baraza")}
+                onClick={() => open("Help me set up my community on Baraza")}
                 className="btn-warm inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-extrabold"
               >
                 Ask Akili

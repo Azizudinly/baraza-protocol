@@ -7,7 +7,7 @@ import { useSeo } from '@/lib/seo';
 const NotFound: React.FC = () => {
   useSeo({
     title: "Page not found",
-    description: "This page isn't part of Baraza. Head back to browse DAOs.",
+    description: "This page isn't part of Baraza. Head back to browse communities.",
     noIndex: true,
   });
   return (
@@ -22,7 +22,7 @@ const NotFound: React.FC = () => {
           </h1>
           <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed">
             The page you&apos;re looking for may have moved or never existed.
-            Head back to explore DAOs or launch your own.
+            Head back to explore communities or launch your own.
           </p>
 
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -35,7 +35,7 @@ const NotFound: React.FC = () => {
               className="btn-ghost inline-flex items-center gap-2 text-sm"
             >
               <Compass className="h-4 w-4" />
-              Browse DAOs
+              Browse communities
             </Link>
           </div>
         </div>

@@ -87,9 +87,9 @@ const GREETING_BY_ROUTE: Record<RouteContext, string> = {
   proposal:
     "Habari! I'm Akili. Want me to summarise this proposal, explain the security review, or help you decide between Support, Object, and Abstain?",
   community:
-    "Habari! I'm Akili. Ask me anything about this community — treasury, members, active votes, or how to draft your own proposal.",
+    "Habari! I'm Akili. Ask me anything about this community — group funds, members, active votes, or how to draft your own proposal.",
   communities:
-    "Habari! I'm Akili. I can help you compare DAOs, decide which one to join, or describe how each group is structured.",
+    "Habari! I'm Akili. I can help you compare communities, decide which one to join, or describe how each group is structured.",
   bounties:
     "Habari! I'm Akili. Browsing bounties? I can explain rewards in your account currency, what verifiers check, and how to start a submission.",
   evaluate:
@@ -148,7 +148,7 @@ const QUICK_REPLIES_BY_ROUTE: Record<RouteContext, string[]> = {
     'Should I Support, Object, or Abstain?',
   ],
   community: [
-    'How do I propose a treasury spend?',
+    'How do I propose spending group funds?',
     'How is the BRZA balance distributed here?',
     'What recent decisions did this group make?',
     'Run a security review on this community',
@@ -189,7 +189,7 @@ const RESPONSES: Array<{ keywords: string[]; reply: string }> = [
   {
     keywords: ['ai', 'asha', 'akili', 'guide', 'copilot', 'assistant', 'platform', 'use baraza'],
     reply:
-      'Baraza combines the website, the operating platform, and Akili AI in one flow. Use Explore to find communities, Launch to create one, dashboards to manage the shared treasury and votes, and ask me when you need help choosing settings or explaining the next action.',
+      'Baraza combines the website, the operating platform, and Akili AI in one flow. Use Explore to find communities, Launch to create one, dashboards to manage shared group funds and votes, and ask me when you need help choosing settings or explaining the next action.',
   },
   {
     keywords: ['plan', 'setup', 'best setup', 'rules', 'quorum', 'threshold'],
@@ -214,7 +214,7 @@ const RESPONSES: Array<{ keywords: string[]; reply: string }> = [
   {
     keywords: ['join', 'member', 'membership', 'card', 'how to join'],
     reply:
-      'To join a DAO, find it on Explore and click "Become a member". After paying the monthly dues, your membership is issued after payment proof and approval.',
+      'To join a community, find it on Explore and click "Become a member". After paying the monthly dues, your membership is issued after payment proof and approval.',
   },
   {
     keywords: ['dashboard', 'stats', 'overview', 'manage'],
@@ -244,7 +244,7 @@ const RESPONSES: Array<{ keywords: string[]; reply: string }> = [
   {
     keywords: ['security', 'safe', 'trust', 'secure', 'hack', 'vet', 'review', 'risk'],
     reply:
-      'Akili runs an AI-assisted security review on group rules, bounties, proposals, and treasury releases. It checks for unclear dues, weak voting rules, expired tasks, large fund requests, and missing member records. Akili can flag risk, but members and admins still make the final decision.',
+      'Akili runs an AI-assisted security review on group rules, bounties, proposals, and fund releases. It checks for unclear dues, weak voting rules, expired tasks, large fund requests, and missing member records. Akili can flag risk, but members and admins still make the final decision.',
   },
   {
     keywords: ['hello', 'hi', 'habari', 'hey', 'hola', 'sasa'],
@@ -254,7 +254,7 @@ const RESPONSES: Array<{ keywords: string[]; reply: string }> = [
   {
     keywords: ['thank', 'thanks', 'asante', 'awesome', 'great', 'perfect'],
     reply:
-      'Karibu sana! Happy to help anytime. If you get stuck anywhere in Baraza, just ask. Good luck with your DAO!',
+      'Karibu sana! Happy to help anytime. If you get stuck anywhere in Baraza, just ask. Good luck with your community!',
   },
 ];
 

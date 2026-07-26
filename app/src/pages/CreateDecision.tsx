@@ -34,7 +34,7 @@ const CreateDecision: React.FC = () => {
 
   useSeo({
     title: community ? `New proposal — ${community.name}` : "New proposal",
-    description: "Submit a governance proposal for funding, rule changes, or treasury releases.",
+    description: "Submit a governance proposal for funding, rule changes, or fund releases.",
     path: id ? `/dashboard/${id}/decisions/create` : undefined,
     noIndex: true,
   });
@@ -161,7 +161,7 @@ const CreateDecision: React.FC = () => {
               <h1 className="font-display text-2xl font-bold">Submit a proposal</h1>
               </div>
               <p className="text-sm mb-8">
-                Submit a proposal for members to vote on. Include how much funding is needed from the treasury.
+                Submit a proposal for members to vote on. Include how much funding is needed from the group funds.
               </p>
             </div>
             </CommunityBanner>
@@ -246,7 +246,7 @@ const CreateDecision: React.FC = () => {
                 </div>
                 {overBudget && (
                   <p className="text-xs mt-1.5">
-                    This exceeds the available treasury of {formatKSh(community.fundBalance)}
+                    This exceeds the available group funds of {formatKSh(community.fundBalance)}
                   </p>
                 )}
               </div>

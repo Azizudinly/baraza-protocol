@@ -108,7 +108,7 @@ export default function CommunityCard({
               <span className="text-[11px] font-semibold text-foreground tabular-nums truncate w-full text-center">
                 {formatKSh(fundBalance)}
               </span>
-              <span className="text-[9px] text-muted-foreground">Treasury</span>
+              <span className="text-[9px] text-muted-foreground">Group funds</span>
             </div>
             <div className="flex flex-col items-center text-center gap-0.5">
               <MessageSquare className="w-3.5 h-3.5 text-secondary" />

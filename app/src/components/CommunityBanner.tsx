@@ -97,7 +97,7 @@ export default function CommunityBanner({
             </div>
             <div>
               <p className="font-display text-base font-bold">{formatKSh(activeCommunity.fundBalance)}</p>
-              <p className="text-muted-foreground">Treasury</p>
+              <p className="text-muted-foreground">Group funds</p>
             </div>
           </div>
 
