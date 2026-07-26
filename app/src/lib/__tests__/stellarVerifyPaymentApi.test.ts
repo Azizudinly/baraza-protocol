@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import handler from '../../../api/stellar/verify-payment';
+import { POST as handler } from '../../../api/stellar/verify-payment';
 
 const TX_HASH = 'a'.repeat(64);
 const INTENT_SECRET = 'test-intent-secret-32-bytes-long!';

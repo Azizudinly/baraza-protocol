@@ -32,7 +32,14 @@ function bad(message: string, status = 400): Response {
   return json({ error: 'invalid_request', message }, { status });
 }
 
-export default async function handler(req: Request): Promise<Response> {
+// Vercel's Node.js runtime only recognizes the Web fetch-style Request/Response
+// signature via named HTTP-method exports (or `export default { fetch }`) — a
+// bare `export default function handler(req)` is invoked with the legacy
+// `(req, res) => void` calling convention instead, so the Response this
+// function returns is silently discarded and the request hangs until the
+// function timeout. See app/api/agent/chat.ts for the same pattern already
+// used correctly elsewhere in this repo.
+async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
@@ -115,3 +122,5 @@ export default async function handler(req: Request): Promise<Response> {
   const created = Array.isArray(rows) ? rows[0] : rows;
   return json({ persisted: true, community: created }, { status: 201 });
 }
+
+export { handler as POST, handler as OPTIONS };
