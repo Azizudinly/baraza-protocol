@@ -44,7 +44,7 @@ deploy_contract() {
     exit 1
   fi
 
-  echo "  Deploying ${name}..."
+  echo "  Deploying ${name}..." >&2
   stellar contract deploy \
     --wasm "${wasm}" \
     --source "${SOURCE}" \
