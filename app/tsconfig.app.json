@@ -21,7 +21,10 @@
     "baseUrl": "./src",
     "paths": {
       "@/*": ["*"],
-      "@": ["."]
+      "@": ["."],
+      "@integrations/*": ["../../packages/integrations/src/*"],
+      "@coop-templates": ["../../packages/coop-templates/src"],
+      "@coop-templates/*": ["../../packages/coop-templates/src/*"]
     }
   },
   "include": ["src"]

@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Users, ArrowLeft, CheckCircle2, Loader2, Phone, ShieldCheck, Wallet, Hash, Smartphone, MessageCircle, Landmark } from 'lucide-react';
 import Layout from '@/components/Layout';
-import { DAO_CREATION_FEE_KES, PAYBILL_ADDON_FEE_KES, USSD_ADDON_FEE_KES } from '@/lib/constants';
+import { DAO_CREATION_FEE_KES, PAYBILL_ADDON_FEE_KES, USSD_ADDON_FEE_KES, isCommunityType, type CommunityType } from '@/lib/constants';
 import { formatKSh } from '@/lib/utils';
 import { normaliseKenyanPhone } from '@/lib/phone';
 import { useWallet } from '@solana/wallet-adapter-react';
@@ -167,14 +167,14 @@ function AnimatedSetupChecklist({ items, summary }: AnimatedSetupChecklistProps)
   );
 }
 
-const GOVERNANCE_PRESETS: Record<string, {
+const GOVERNANCE_PRESETS: Partial<Record<CommunityType, {
   label: string;
   summary: string;
   quorum: string;
   approvalThreshold: string;
   votingPeriod: string;
   treasuryPolicy: TreasuryPolicy;
-}> = {
+}>> = {
   savings: {
     label: 'Chama / savings group',
     summary: 'Simple member-majority voting for dues, welfare support, and small shared purchases.',
@@ -291,7 +291,7 @@ const CreateCommunity: React.FC = () => {
   );
   const [form, setForm] = useState(() => {
     const requestedType = searchParams.get('type') ?? '';
-    const preset = GOVERNANCE_PRESETS[requestedType];
+    const preset = isCommunityType(requestedType) ? GOVERNANCE_PRESETS[requestedType] : undefined;
     return {
       name: '',
       type: preset ? requestedType : '',
@@ -316,7 +316,7 @@ const CreateCommunity: React.FC = () => {
     (addPaybill ? PAYBILL_ADDON_FEE_KES : 0) +
     (addUssd ? USSD_ADDON_FEE_KES : 0);
   const selectedCommunityChain = walletChain;
-  const selectedPreset = form.type ? GOVERNANCE_PRESETS[form.type] : null;
+  const selectedPreset = isCommunityType(form.type) ? GOVERNANCE_PRESETS[form.type] : null;
   const requiresPhone = paymentMethod === 'mobile-money' || paymentMethod === 'whatsapp';
   const isValid = !!(
     form.name.trim() &&

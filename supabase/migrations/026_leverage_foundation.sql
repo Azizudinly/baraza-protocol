@@ -34,11 +34,23 @@ ALTER TABLE communities
   ADD COLUMN IF NOT EXISTS chain_config jsonb NOT NULL DEFAULT '{}'::jsonb,
   ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'draft';
 
+-- Every value here must cover the union of:
+--   - COMMUNITY_TYPES in app/src/lib/constants.ts (canonical source, 27 values)
+--   - GOVERNANCE_PRESETS keys in app/src/pages/CreateCommunity.tsx (subset of the above)
+--   - CommunityType in packages/coop-templates/src/index.ts (5-value curated subset)
+--   - the 'chama' DEFAULT on the `type` column above
+-- Covered by app/src/lib/__tests__/communityTypesMigration.test.ts, which fails
+-- the build if any of those sources drift ahead of this list.
 ALTER TABLE communities
   DROP CONSTRAINT IF EXISTS communities_type_chk;
 ALTER TABLE communities
   ADD CONSTRAINT communities_type_chk
-    CHECK (type IN ('chama', 'sacco', 'stokvel', 'dao', 'government'));
+    CHECK (type IN (
+      'chama', 'savings', 'stokvel', 'sacco', 'dao', 'cooperative', 'professional',
+      'investment', 'rosca', 'asca', 'union', 'ngo', 'alumni', 'religious', 'sports',
+      'homeowners', 'burial', 'tribe', 'welfare', 'pta', 'youth', 'political',
+      'supply_chain', 'study', 'housing', 'organization', 'government'
+    ));
 
 ALTER TABLE communities
   DROP CONSTRAINT IF EXISTS communities_tier_chk;
@@ -124,11 +136,19 @@ CREATE POLICY "Members can manage their own community"
   ON members FOR ALL
   USING (public.is_community_admin(community_id))
   WITH CHECK (public.is_community_admin(community_id));
+
+-- No member-facing self-UPDATE policy on this table. A prior draft added one
+-- ("Members can update their own row", USING/WITH CHECK on auth_user_id only)
+-- with no column restriction — Postgres RLS policies gate rows, not columns,
+-- so it let any authenticated member run
+--   UPDATE members SET role = 'admin' WHERE auth_user_id = auth.uid()::text
+-- and self-promote to admin/founder. Removed rather than patched: RLS can't
+-- express "this member may update wallet_address but not role" on its own.
+-- Self-service field updates (e.g. wallet_address) must go through an API
+-- route that validates the caller against auth_user_id, allowlists exactly
+-- the columns being changed, and writes via the service_role key — never a
+-- broad member-facing UPDATE policy on this table.
 DROP POLICY IF EXISTS "Members can update their own row" ON members;
-CREATE POLICY "Members can update their own row"
-  ON members FOR UPDATE
-  USING (auth_user_id = auth.uid()::text)
-  WITH CHECK (auth_user_id = auth.uid()::text);
 
 DROP TRIGGER IF EXISTS members_set_updated_at ON members;
 CREATE TRIGGER members_set_updated_at

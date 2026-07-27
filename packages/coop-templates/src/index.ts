@@ -1,3 +1,10 @@
+// Intentionally a narrower, curated subset of the canonical community type
+// union in app/src/lib/constants.ts (CommunityType there has 27 values; this
+// package only ships hand-authored governance templates for these 5). Every
+// value here must also appear in that canonical union and in the
+// communities_type_chk constraint (supabase/migrations/026_leverage_foundation.sql)
+// — this package doesn't import from `app` to avoid a package-depends-on-app
+// edge, so the overlap is verified by test rather than by shared types.
 export type CommunityType = 'chama' | 'sacco' | 'stokvel' | 'dao' | 'government';
 export type PayoutMode = 'rotating' | 'proportional' | 'milestone';
 
