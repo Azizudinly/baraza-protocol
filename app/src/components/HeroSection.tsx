@@ -1,8 +1,18 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState, type MouseEvent } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, Banknote, ShieldCheck, Users, Vote, type LucideIcon } from "lucide-react";
+import {
+  ArrowRight,
+  ArrowUp,
+  Banknote,
+  ShieldCheck,
+  Sparkles,
+  Users,
+  Vote,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAkiliChat } from "@/akili/useAkiliChat";
 
 const stats = [
   { label: "Group funds and votes", value: "Govern" },
@@ -178,6 +188,50 @@ function HeroPreview() {
   );
 }
 
+function HeroAskAkiliBar() {
+  const { open } = useAkiliChat();
+  const [query, setQuery] = useState("");
+
+  const handleAsk = () => {
+    const message = query.trim();
+    if (!message) return;
+    setQuery("");
+    open(message);
+  };
+
+  return (
+    <div className="rise rise-5 mt-6 max-w-xl">
+      <div className="group relative">
+        <div
+          className="absolute -inset-0.5 rounded-2xl opacity-30 blur-sm transition-opacity group-hover:opacity-60"
+          style={{ background: "var(--gradient-primary)" }}
+        />
+        <div className="relative flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 shadow-lg">
+          <Sparkles className="h-4 w-4 flex-shrink-0 text-primary" />
+          <input
+            type="text"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => event.key === "Enter" && handleAsk()}
+            placeholder="Ask Akili anything about Baraza…"
+            className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          />
+          <button
+            type="button"
+            onClick={handleAsk}
+            disabled={!query.trim()}
+            aria-label="Ask Akili"
+            className="flex h-8 w-8 items-center justify-center rounded-xl transition-all disabled:opacity-30"
+            style={{ background: query.trim() ? "var(--gradient-warm)" : undefined }}
+          >
+            <ArrowUp className={cn("h-4 w-4", query.trim() ? "text-warm-foreground" : "text-muted-foreground")} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function HeroSection() {
   return (
     <section className="relative overflow-hidden bg-[image:var(--gradient-hero)] pt-14 pb-8 sm:pt-20 lg:pt-20">
@@ -212,6 +266,8 @@ export default function HeroSection() {
                 Launch a community
               </Link>
             </div>
+
+            <HeroAskAkiliBar />
 
             {/* Label chips add noise on small screens — desktop only */}
             <div className="rise rise-5 mt-6 hidden max-w-xl grid-cols-3 gap-2 sm:grid sm:gap-3">
