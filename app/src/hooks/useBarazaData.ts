@@ -13,10 +13,13 @@ import { dataStore } from '@/lib/dataStore';
 import { createBarazaClient, toSlug, communityPda, proposalPda, type VoteSupportArg } from '@/lib/programs';
 import type { BarazaChainClient } from '@/lib/programs';
 import {
+  getCommunityChainMapping,
   getDecisionChainMapping,
   saveCommunityChainMapping,
   saveDecisionChainMapping,
 } from '@/lib/chainMappings';
+import { useStellarWallet } from '@/hooks/useStellarWallet';
+import { BarazaStellarClient } from '@/lib/programs/stellarClient';
 
 // ---------- Low-level subscription ----------
 
@@ -182,6 +185,7 @@ export function useJoinCommunity() {
 
 export function useCreateDecision() {
   const client = useBarazaChain();
+  const stellarWallet = useStellarWallet();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -233,6 +237,38 @@ export function useCreateDecision() {
             console.warn('[baraza] createProposal on-chain failed (local fallback):', chainErr);
           }
         }
+      } else if (stellarWallet.address && stellarWallet.signTransaction) {
+        // Only attempt this for communities actually registered on Stellar's
+        // community_registry contract — required for governance's require_member
+        // check to find a real, matching membership record on that chain.
+        const communityMapping = getCommunityChainMapping(data.communityId);
+        if (communityMapping?.chain === 'stellar') {
+          try {
+            const stellarClient = new BarazaStellarClient({
+              publicKey: stellarWallet.address,
+              signTransaction: stellarWallet.signTransaction,
+            });
+            const { txHash, proposalId } = await stellarClient.createProposal(
+              communityMapping.slug,
+              data.title,
+              data.description,
+            );
+            const localDecision = await dataStore.createDecision(data);
+            if (localDecision) {
+              saveDecisionChainMapping({
+                localId: localDecision.id,
+                communityLocalId: data.communityId,
+                chain: 'stellar',
+                proposalAddress: stellarClient.governanceContractId,
+                proposalId: Number(proposalId),
+                createTxSignature: txHash,
+              });
+            }
+            return localDecision;
+          } catch (chainErr) {
+            console.warn('[baraza] createProposal on-chain (stellar) failed (local fallback):', chainErr);
+          }
+        }
       }
       const decision = await dataStore.createDecision(data);
       return decision;
@@ -242,13 +278,14 @@ export function useCreateDecision() {
     } finally {
       setIsLoading(false);
     }
-  }, [client]);
+  }, [client, stellarWallet.address, stellarWallet.signTransaction]);
 
   return { create, isLoading, error };
 }
 
 export function useCastVote() {
   const client = useBarazaChain();
+  const stellarWallet = useStellarWallet();
   const [isLoading, setIsLoading] = useState(false);
 
   const vote = useCallback(async (
@@ -275,13 +312,29 @@ export function useCastVote() {
             console.warn('[baraza] castVote on-chain failed (local fallback):', chainErr);
           }
         }
+      } else if (stellarWallet.address && stellarWallet.signTransaction) {
+        const decisionMapping = getDecisionChainMapping(decisionId);
+        // The deployed governance contract's vote() is binary (support: bool) —
+        // it has no abstain option. Abstain votes are recorded locally only;
+        // for/against are anchored on-chain.
+        if (decisionMapping?.chain === 'stellar' && voteType !== 'abstain') {
+          try {
+            const stellarClient = new BarazaStellarClient({
+              publicKey: stellarWallet.address,
+              signTransaction: stellarWallet.signTransaction,
+            });
+            await stellarClient.castVote(String(decisionMapping.proposalId), voteType === 'for');
+          } catch (chainErr) {
+            console.warn('[baraza] castVote on-chain (stellar) failed (local fallback):', chainErr);
+          }
+        }
       }
       const ok = await dataStore.castVote(decisionId, walletKey, voteType);
       return ok;
     } finally {
       setIsLoading(false);
     }
-  }, [client]);
+  }, [client, stellarWallet.address, stellarWallet.signTransaction]);
 
   return { vote, isLoading };
 }

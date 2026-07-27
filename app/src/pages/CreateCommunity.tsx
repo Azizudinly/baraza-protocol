@@ -20,6 +20,8 @@ import { communityPda, toSlug } from '@/lib/programs';
 import { saveCommunityChainMapping } from '@/lib/chainMappings';
 import { buildWalletProofHeaders } from '@/lib/walletProof';
 import { useAccount } from '@/contexts/AccountContext';
+import { useStellarWallet } from '@/hooks/useStellarWallet';
+import { BarazaStellarClient } from '@/lib/programs/stellarClient';
 
 type TreasuryPolicy = 'multisig-ready' | 'proposal-only' | 'manual-review';
 type ChecklistState = 'complete' | 'active' | 'pending';
@@ -273,6 +275,7 @@ const CreateCommunity: React.FC = () => {
   const { toast } = useToast();
   const { chain } = useChain();
   const chainClient = useBarazaChain();
+  const stellarWallet = useStellarWallet();
   const [isPending, setIsPending] = useState(false);
   const [isCreated, setIsCreated] = useState(false);
   const [createdCommunityId, setCreatedCommunityId] = useState<string | null>(null);
@@ -418,15 +421,31 @@ const CreateCommunity: React.FC = () => {
           : { orderId: `ord_${walletChain}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`, persisted: false };
 
         // Step 2: create the community record
-        let chainResult: { slug: string; communityAddress: string; signature: string } | null = null;
+        let chainResult: { chain: 'solana' | 'stellar'; slug: string; communityAddress: string; signature: string } | null = null;
         if (selectedCommunityChain === 'solana' && chainClient) {
           const slug = toSlug(form.name);
           try {
             const signature = await chainClient.createCommunity(slug, form.name, '');
             const [communityKey] = communityPda(slug);
             chainResult = {
+              chain: 'solana',
               slug,
               communityAddress: communityKey.toBase58(),
+              signature,
+            };
+          } catch (chainErr) {
+            console.warn('[baraza] createCommunity on-chain failed (record-only fallback):', chainErr);
+          }
+        } else if (selectedCommunityChain === 'stellar' && stellarWallet.address && stellarWallet.signTransaction) {
+          const slug = toSlug(form.name);
+          try {
+            const stellarSigner = { publicKey: stellarWallet.address, signTransaction: stellarWallet.signTransaction };
+            const stellarClient = new BarazaStellarClient(stellarSigner);
+            const signature = await stellarClient.registerCommunity(slug, form.name);
+            chainResult = {
+              chain: 'stellar',
+              slug,
+              communityAddress: stellarClient.communityRegistryContractId,
               signature,
             };
           } catch (chainErr) {
@@ -461,9 +480,7 @@ const CreateCommunity: React.FC = () => {
         if (chainResult) {
           saveCommunityChainMapping({
             localId: community.id,
-            // chainResult is only set in the `selectedCommunityChain === 'solana'`
-            // branch above, but TS cannot carry that narrowing here.
-            chain: 'solana',
+            chain: chainResult.chain,
             slug: chainResult.slug,
             communityAddress: chainResult.communityAddress,
             createTxSignature: chainResult.signature,
