@@ -14,7 +14,7 @@ const communities = [
 const recentActivity = [
   { action: "Proposal passed", community: "Kilimani Chama", time: "2m", icon: Vote },
   { action: "Dues confirmed", community: "Westlands SACCO", time: "8m", icon: Banknote },
-  { action: "Treasury grew", community: "Estate Owners", time: "15m", icon: TrendingUp },
+  { action: "Group funds grew", community: "Estate Owners", time: "15m", icon: TrendingUp },
   { action: "Payout released", community: "Mama Mboga Fund", time: "22m", icon: CheckCircle2 },
   { action: "Vote concluded", community: "Techies Welfare", time: "34m", icon: Vote },
   { action: "Members added", community: "Green Farms Co-op", time: "1h", icon: Users },

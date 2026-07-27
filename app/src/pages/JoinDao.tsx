@@ -80,7 +80,7 @@ export default function JoinDao() {
   const { community } = useCommunity(id);
   const account = useAccount();
   useSeo({
-    title: community ? `Join ${community.name}` : "Join a DAO",
+    title: community ? `Join ${community.name}` : "Join a community",
     description: "Verify your phone, pay membership dues via M-Pesa, and activate your membership.",
     path: id ? `/join/${id}` : undefined,
     noIndex: true,
@@ -247,7 +247,7 @@ export default function JoinDao() {
         <div className="container relative z-10 mx-auto px-4">
           <Link to={community ? `/dashboard/${community.id}` : "/communities"} className="mb-6 inline-flex items-center gap-2 text-sm">
             <ArrowLeft className="h-4 w-4" />
-            Back to DAO
+            Back to community
           </Link>
 
           <div className="mx-auto max-w-5xl space-y-5">
@@ -256,9 +256,9 @@ export default function JoinDao() {
               <div className="p-5 md:p-7">
                 <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
                   <div>
-                    <p className="font-mono text-xs uppercase tracking-widest">Join DAO</p>
+                    <p className="font-mono text-xs uppercase tracking-widest">Join community</p>
                     <h1 className="mt-2 font-display text-3xl font-bold">
-                      {community?.name ?? "DAO"}
+                      {community?.name ?? "Community"}
                     </h1>
                     <p className="mt-2 max-w-xl text-sm leading-6">
                       Pay with mobile money, bank transfer, or your Privy account. Your membership record stays attached to one Baraza account.

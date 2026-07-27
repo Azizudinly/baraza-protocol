@@ -177,7 +177,7 @@ const CommunityDashboard: React.FC = () => {
 
   useSeo({
     title: community ? `${community.name} dashboard` : undefined,
-    description: 'Treasury balance, member roster, proposals, and account activity for a Baraza group.',
+    description: 'Group funds, member roster, decisions, and account activity for a Baraza community.',
     path: id ? `/dashboard/${id}` : '/dashboard',
     noIndex: true,
   });
@@ -295,7 +295,7 @@ const CommunityDashboard: React.FC = () => {
                       {community.type}
                     </span>
                     <span className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-medium">
-                      Community treasury
+                      Community group funds
                     </span>
                     <span className="inline-flex items-center gap-1">
                       <Calendar className="h-3.5 w-3.5" />
@@ -323,7 +323,7 @@ const CommunityDashboard: React.FC = () => {
 
           {/* Live stats */}
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
-            <LiveStatCard icon={TrendingUp} label="Treasury" value={community.fundBalance} format={(v) => formatRailAmountFromKes(v, communityChainMeta)} color="text-primary" bg="bg-primary/10" />
+            <LiveStatCard icon={TrendingUp} label="Group funds" value={community.fundBalance} format={(v) => formatRailAmountFromKes(v, communityChainMeta)} color="text-primary" bg="bg-primary/10" />
             <LiveStatCard icon={Users} label="Members" value={community.memberCount} color="text-secondary" bg="bg-secondary/10" />
             <LiveStatCard icon={Vote} label="Active Proposals" value={activeDecisions.length} color="text-accent" bg="bg-accent/10" showDelta={false} />
             <LiveStatCard icon={History} label="Past Proposals" value={pastDecisions.length} color="text-muted-foreground" bg="bg-muted" showDelta={false} />
@@ -449,7 +449,7 @@ const CommunityDashboard: React.FC = () => {
                       {[
                         ['Proposals', 'Active member credential required'],
                         ['Bounties', 'Admin or active member credential required'],
-                        ['Treasury releases', 'Admin credential and approved proposal required'],
+                        ['Fund releases', 'Admin credential and approved decision required'],
                       ].map(([label, detail]) => (
                         <div key={label} className="rounded-lg border p-3">
                           <p className="text-[10px] font-bold uppercase tracking-widest">{label}</p>
@@ -620,7 +620,7 @@ const CommunityDashboard: React.FC = () => {
                 <div className="grid gap-4 lg:grid-cols-2">
                   <div className="premium-glass rounded-xl p-5">
                     <div className="mb-4 flex items-center justify-between">
-                      <h3 className="font-display text-base font-semibold">Community treasury</h3>
+                      <h3 className="font-display text-base font-semibold">Community group funds</h3>
                       <ReceiptText className="h-4 w-4" />
                     </div>
                     <div className="space-y-3 text-sm">
@@ -633,7 +633,7 @@ const CommunityDashboard: React.FC = () => {
                         <span className="font-display text-lg font-bold">{formatRailAmountFromKes(community.fundBalance, communityChainMeta)}</span>
                       </div>
                       <div className="flex items-center justify-between border-b pb-3">
-                        <span>Treasury record</span>
+                        <span>Group funds record</span>
                         <span className="text-xs font-semibold">Pending program deploy</span>
                       </div>
                       <div className="flex items-center justify-between">
@@ -645,7 +645,7 @@ const CommunityDashboard: React.FC = () => {
                     </div>
                     <Link to={`/dashboard/${community.id}/treasury`} className="btn-ghost mt-5 w-full justify-center gap-2 text-sm">
                       <ExternalLink className="h-4 w-4" />
-                      Open treasury detail
+                      Open group funds detail
                     </Link>
                   </div>
 

@@ -30,7 +30,7 @@ const reelVideos: ReelVideo[] = [
     tag: "Overview",
     title: "What Baraza does, in two minutes",
     description:
-      "DAOs, chamas, and SACCOs on one shared protocol — dues, votes, and treasury without the spreadsheet.",
+      "Communities, chamas, and SACCOs on one shared protocol — dues, votes, and group funds without the spreadsheet.",
     community: "Baraza Protocol",
     host: "Aziz · Founder",
     date: "Mar 2026",
@@ -40,7 +40,7 @@ const reelVideos: ReelVideo[] = [
     tag: "Setup",
     title: "Launching a chama in four minutes",
     description:
-      "Group rules, member invites, and the first M-Pesa round of dues. From phone to live treasury.",
+      "Group rules, member invites, and the first M-Pesa round of dues. From phone to live group funds.",
     community: "Mama Mboga Sacco",
     host: "Wanjiku · Treasurer",
     date: "Apr 2026",
@@ -48,7 +48,7 @@ const reelVideos: ReelVideo[] = [
   {
     youtubeId: "w-AkLBB43aM",
     tag: "Governance",
-    title: "Treasury vote, live",
+    title: "Group funds vote, live",
     description:
       "Members propose a clinic equipment purchase. Quorum bar moves. Funds release on threshold.",
     community: "Kibera Youth Chama",

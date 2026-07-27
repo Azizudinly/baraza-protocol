@@ -25,7 +25,7 @@ interface FlowStep {
 const flows: Record<FlowKey, { label: string; title: string; steps: FlowStep[] }> = {
   member: {
     label: "Member",
-    title: "Join, pay, vote, and track the shared treasury.",
+    title: "Join, pay, vote, and track the shared group funds.",
     steps: [
       {
         title: "Open invite",
@@ -47,7 +47,7 @@ const flows: Record<FlowKey, { label: string; title: string; steps: FlowStep[] }
       },
       {
         title: "Verify",
-        detail: "Treasury activity stays visible after every contribution and decision.",
+        detail: "Group funds activity stays visible after every contribution and decision.",
         icon: CheckCircle2,
         stat: "Live",
       },
@@ -77,7 +77,7 @@ const flows: Record<FlowKey, { label: string; title: string; steps: FlowStep[] }
       },
       {
         title: "Release by rule",
-        detail: "Approved proposals become controlled treasury movement.",
+        detail: "Approved proposals become controlled fund movement.",
         icon: ShieldCheck,
         stat: "Rule",
       },

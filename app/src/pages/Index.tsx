@@ -19,7 +19,7 @@ import { useSeo } from "@/lib/seo";
 
 const highlights = [
   { label: "Members active", value: "42" },
-  { label: "Treasury visible", value: formatKSh(450000) },
+  { label: "Group funds visible", value: formatKSh(450000) },
   { label: "Open bounties", value: "08" },
 ];
 
@@ -48,7 +48,7 @@ const bounties = [
   {
     title: "Draft the monthly update",
     meta: "500 pts · 2 slots left",
-    detail: "Summarize savings progress, treasury moves, and community wins.",
+    detail: "Summarize savings progress, group fund moves, and community wins.",
   },
   {
     title: "Audit transaction records",
@@ -98,9 +98,9 @@ function StatPill({ label, value }: { label: string; value: string }) {
 
 export default function Index() {
   useSeo({
-    title: "Community treasury and governance, built for collective trust",
+    title: "Community group funds and governance, built for collective trust",
     description:
-      "Baraza helps savings groups, SACCOs, and community collectives run transparent treasury, voting, and contribution workflows without exposing members to technical complexity.",
+      "Baraza helps savings groups, SACCOs, and community collectives run transparent group funds, voting, and contribution workflows without exposing members to technical complexity.",
     path: "/",
   });
 
@@ -133,7 +133,7 @@ export default function Index() {
                 Run your community with trust built in.
               </h1>
               <p className="rise rise-4 mt-5 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg sm:leading-8">
-                Track treasury, contributions, governance, and shared work in one warm, visible
+                Track group funds, contributions, governance, and shared work in one warm, visible
                 community surface. Members stay focused on the group, not on infrastructure or
                 hidden back-office steps.
               </p>
@@ -169,7 +169,7 @@ export default function Index() {
                       Nairobi Community Collective
                     </p>
                     <h2 className="mt-2 font-display text-2xl font-black text-foreground">
-                      Treasury visible to every member
+                      Group funds visible to every member
                     </h2>
                   </div>
                   <div className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-primary">
@@ -179,7 +179,7 @@ export default function Index() {
 
                 <div className="mt-6 rounded-[1rem] border border-border/70 bg-background/80 p-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    Total community treasury
+                    Total community group funds
                   </p>
                   <div className="mt-2 flex items-end gap-3">
                     <p className="font-display text-4xl font-black text-primary">{formatKSh(450000)}</p>
@@ -358,10 +358,10 @@ export default function Index() {
                 Shared milestone
               </p>
               <h2 className="mt-3 font-display text-3xl font-black leading-tight sm:text-4xl">
-                Turn community treasury, governance, and participation into one living surface.
+                Turn community group funds, governance, and participation into one living surface.
               </h2>
               <p className="mt-4 max-w-xl text-sm leading-6 text-primary-foreground/88 sm:text-base sm:leading-7">
-                Baraza brings member actions, treasury visibility, contribution pathways, and
+                Baraza brings member actions, group funds visibility, contribution pathways, and
                 accountable decisions together so the collective can keep moving with confidence.
               </p>
               <div className="mt-7 flex flex-col gap-3 sm:flex-row">

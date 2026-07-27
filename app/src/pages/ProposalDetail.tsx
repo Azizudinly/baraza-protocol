@@ -168,7 +168,7 @@ export default function ProposalDetail() {
               <div className="grid gap-4 md:grid-cols-4">
                 {[
                   ["Requested funding", formatRailAmountFromKes(proposal.fundingAmount, chainMeta)],
-                  ["Treasury impact", treasuryImpactPct !== null ? `-${treasuryImpactPct}%` : "—"],
+                  ["Share of group funds", treasuryImpactPct !== null ? `-${treasuryImpactPct}%` : "—"],
                   ["Quorum required", `${quorumRequiredPct}%`],
                   ["Current approval", totalVotes > 0 ? `${support}%` : "—"],
                 ].map(([label, value]) => (

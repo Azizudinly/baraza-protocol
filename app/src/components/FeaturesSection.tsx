@@ -14,7 +14,7 @@ const workflow = [
   {
     icon: CircleDollarSign,
     label: "Collect",
-    title: "Dues land in one shared treasury",
+    title: "Dues land in one shared group account",
     description:
       "Set monthly contributions, record member payments, and keep balances visible without chasing private ledgers.",
     metric: "91%",
@@ -34,7 +34,7 @@ const workflow = [
     label: "Release",
     title: "Payouts follow the group rule",
     description:
-      "Approval thresholds keep treasury movement matched to the member decision.",
+      "Approval thresholds keep fund movement matched to the member decision.",
     metric: "17h",
     metricLabel: "vote window left",
   },
@@ -120,7 +120,7 @@ export default function FeaturesSection() {
               transition={{ delay: 0.05 }}
               className="mt-3 max-w-2xl font-display text-3xl font-bold leading-tight text-foreground md:text-4xl"
             >
-              The treasury loop your members can inspect
+              The group funds loop your members can inspect
             </motion.h2>
           </div>
           <motion.p
@@ -153,7 +153,7 @@ export default function FeaturesSection() {
             <div className="mb-5 flex items-center justify-between">
               <div>
                 <p className="text-xs uppercase tracking-widest text-muted-foreground">Sample ledger</p>
-                <h3 className="mt-1 font-display text-xl font-bold text-foreground">Treasury state</h3>
+                <h3 className="mt-1 font-display text-xl font-bold text-foreground">Group funds state</h3>
               </div>
               <FileCheck2 className="h-5 w-5 text-primary" />
             </div>

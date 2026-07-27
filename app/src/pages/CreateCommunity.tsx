@@ -191,7 +191,7 @@ const GOVERNANCE_PRESETS: Record<string, {
   },
   sacco: {
     label: 'SACCO',
-    summary: 'Stronger approvals and manual review for member savings, loans, and regulated treasury actions.',
+    summary: 'Stronger approvals and manual review for member savings, loans, and regulated fund actions.',
     quorum: '60',
     approvalThreshold: '75',
     votingPeriod: '14',
@@ -207,7 +207,7 @@ const GOVERNANCE_PRESETS: Record<string, {
   },
   dao: {
     label: 'DAO',
-    summary: 'Token-aware governance for proposals, bounties, grants, and treasury releases.',
+    summary: 'Token-aware governance for proposals, bounties, grants, and fund releases.',
     quorum: '40',
     approvalThreshold: '51',
     votingPeriod: '7',
@@ -215,7 +215,7 @@ const GOVERNANCE_PRESETS: Record<string, {
   },
   organization: {
     label: 'Organization',
-    summary: 'Admin-led workflow with transparent proposal records and controlled treasury review.',
+    summary: 'Admin-led workflow with transparent proposal records and controlled fund review.',
     quorum: '40',
     approvalThreshold: '66',
     votingPeriod: '7',
@@ -260,15 +260,15 @@ function provisionUssdShortcode(communityName: string): string {
 
 const CreateCommunity: React.FC = () => {
   useSeo({
-    title: "Launch a group treasury",
+    title: "Launch a community",
     description:
-      "Launch a group treasury on Baraza. Choose a governance model, set member dues, quorum rules, and payment paths in one guided flow.",
+      "Launch your community on Baraza. Choose a governance model, set member dues, quorum rules, and payment paths in one guided flow.",
     path: "/create",
   });
   const navigate = useNavigate();
   const account = useAccount();
   const [searchParams] = useSearchParams();
-  const { address: founderAddress } = useWalletGuard({ action: 'launch a DAO' });
+  const { address: founderAddress } = useWalletGuard({ action: 'launch a community' });
   const wallet = useWallet();
   const { toast } = useToast();
   const { chain } = useChain();
@@ -331,7 +331,7 @@ const CreateCommunity: React.FC = () => {
       state: form.name.trim() && form.type ? 'complete' : form.name.trim() || form.type ? 'active' : 'pending',
     },
     {
-      label: 'Treasury account',
+      label: 'Group account',
       detail: 'Settlement path selected',
       state: 'complete',
     },
@@ -362,8 +362,8 @@ const CreateCommunity: React.FC = () => {
     },
   ];
   const setupChecklistSummary = isValid
-    ? 'Treasury setup, membership tiers, and credentials are ready to provision once your group is launched.'
-    : 'Complete the setup fields to preview the account, treasury, and credential provisioning flow.';
+    ? 'Group funds setup, membership tiers, and credentials are ready to provision once your group is launched.'
+    : 'Complete the setup fields to preview the account, group funds, and credential provisioning flow.';
 
   React.useEffect(() => {
     if (chain === 'solana' || chain === 'stellar' || chain === 'base' || chain === 'arbitrum' || chain === 'optimism' || chain === 'celo') {
@@ -475,14 +475,14 @@ const CreateCommunity: React.FC = () => {
         toast({
           title: charge.persisted
             ? `${launchFeeLabel} payment received`
-            : `DAO launched (simulator offline)`,
+            : `Community launched (simulator offline)`,
           description: charge.persisted
             ? `Order ${charge.orderId.slice(0, 12)}... ${form.name} is live.`
             : 'Local dev mode - payment skipped, community launched.',
         });
       } catch (err) {
         toast({
-          title: 'DAO launch failed',
+          title: 'Community launch failed',
           description: err instanceof Error ? err.message : 'Check the form and try again.',
           variant: 'destructive',
         });
@@ -508,7 +508,7 @@ const CreateCommunity: React.FC = () => {
                 {form.name} is live
               </h2>
               <p className="text-sm mb-2">
-                Payment of {launchFeeLabel} received. Your DAO is ready.
+                Payment of {launchFeeLabel} received. Your community is ready.
               </p>
               {(assignedPaybill || assignedUssd) && (
                 <div className="mb-5 rounded-lg border p-4 text-left space-y-3">
@@ -585,7 +585,7 @@ const CreateCommunity: React.FC = () => {
                   <Users className="w-5 h-5" />
                 </div>
                 <h1 className="font-display text-2xl font-black leading-tight text-foreground drop-shadow md:text-3xl">
-                  Launch a group treasury
+                  Launch a community
                 </h1>
               </div>
               <p className="max-w-xl text-sm font-semibold leading-6 text-foreground/92 drop-shadow md:text-base md:leading-7">
@@ -701,7 +701,7 @@ const CreateCommunity: React.FC = () => {
                     Approval Threshold
                   </label>
                   <p className="mb-2 text-[11px] leading-relaxed text-muted-foreground">
-                    Of the votes that come in, share that must say Yes for the decision to pass. 51% is simple majority. 66%+ means the group really has to agree — set this higher for treasury spend.
+                    Of the votes that come in, share that must say Yes for the decision to pass. 51% is simple majority. 66%+ means the group really has to agree — set this higher for large fund releases.
                   </p>
                   <div className="relative">
                     <input
@@ -739,7 +739,7 @@ const CreateCommunity: React.FC = () => {
 
                 <div className="md:col-span-3">
                   <label className="block text-xs font-semibold mb-1">
-                    Treasury Policy
+                    Group funds policy
                   </label>
                   <p className="mb-2 text-[11px] leading-relaxed text-muted-foreground">
                     How money actually leaves the shared fund once members agree. Multisig-ready requires 2+ trusted members to co-sign each release. Proposal-approved sends as soon as a vote passes. Manual review means an admin checks before money moves — safer for large amounts, slower for routine ones.
@@ -750,7 +750,7 @@ const CreateCommunity: React.FC = () => {
                     onChange={handleChange}
                     className="w-full rounded-lg px-4 py-3 text-sm outline-none border cursor-pointer appearance-none"
                   >
-                    <option value="multisig-ready">Multisig-ready treasury release</option>
+                    <option value="multisig-ready">Multisig-ready fund release</option>
                     <option value="proposal-only">Proposal-approved releases only</option>
                     <option value="manual-review">Manual admin review for releases</option>
                   </select>
@@ -764,7 +764,7 @@ const CreateCommunity: React.FC = () => {
                     Premium Add-ons
                   </h2>
                   <p className="mt-1 text-[11px] text-muted-foreground">
-                    Optional payment channels added to your DAO setup fee.
+                    Optional payment channels added to your community setup fee.
                   </p>
                 </div>
 
@@ -799,7 +799,7 @@ const CreateCommunity: React.FC = () => {
                     <div>
                       <p className="font-semibold text-primary">Paybill will be assigned at launch</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        Baraza registers a dedicated 6-digit Safaricom Paybill for your DAO. Your members pay dues using it — no personal number shared. The number appears in your dashboard after launch.
+                        Baraza registers a dedicated 6-digit Safaricom Paybill for your community. Your members pay dues using it — no personal number shared. The number appears in your dashboard after launch.
                       </p>
                     </div>
                   </div>
@@ -836,7 +836,7 @@ const CreateCommunity: React.FC = () => {
                     <div>
                       <p className="font-semibold text-primary">USSD shortcode will be assigned at launch</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
-                        Baraza provisions a dedicated <span className="font-mono">*384*XXX#</span> shortcode for your DAO. Feature-phone members dial it to vote and pay dues without a smartphone. The shortcode appears in your dashboard after launch.
+                        Baraza provisions a dedicated <span className="font-mono">*384*XXX#</span> shortcode for your community. Feature-phone members dial it to vote and pay dues without a smartphone. The shortcode appears in your dashboard after launch.
                       </p>
                     </div>
                   </div>
