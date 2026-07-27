@@ -7,6 +7,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@integrations': path.resolve(__dirname, '../packages/integrations/src'),
+      '@coop-templates': path.resolve(__dirname, '../packages/coop-templates/src'),
     },
   },
   define: {

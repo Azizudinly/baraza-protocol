@@ -4,6 +4,9 @@ export interface DarajaStkPushInput {
   reference: string;
   accountReference?: string;
   callbackUrl?: string;
+  // Caller decides sandbox vs live (e.g. from import.meta.env in a Vite app).
+  // This package never reads env itself so it stays safe to import server-side.
+  sandbox?: boolean;
 }
 
 export interface DarajaStkPushResult {
@@ -46,14 +49,29 @@ async function sha256(value: string): Promise<string> {
   return hexFromBuffer(digest);
 }
 
-export function darajaSandboxEnabled(): boolean {
-  const env = import.meta.env as Record<string, string | undefined>;
-  return env.VITE_DARAJA_SANDBOX !== 'false';
+// Pure parsing of an env flag's string value -- takes the flag as a
+// parameter rather than reading import.meta.env itself, so this package
+// never assumes a Vite/browser environment and stays safe to import
+// server-side. Callers (the app layer) read their own env and pass it in.
+export function darajaSandboxEnabled(sandboxEnvFlag?: string): boolean {
+  return sandboxEnvFlag !== 'false';
+}
+
+function timingSafeEqualHex(a: string, b: string): boolean {
+  // Constant-time comparison: length is not secret (both sides are fixed-length
+  // hex digests), but bailing out on the first differing character would leak
+  // signature bytes via response timing, so every character is always compared.
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
 }
 
 export async function requestStkPush(input: DarajaStkPushInput): Promise<DarajaStkPushResult> {
   const acceptedAt = new Date().toISOString();
-  const sandbox = darajaSandboxEnabled();
+  const sandbox = input.sandbox ?? true;
   const checkoutRequestId = `ws_${(await sha256(`${input.phone}:${input.amountKes}:${input.reference}`)).slice(0, 28)}`;
   const merchantRequestId = `mr_${(await sha256(`${input.reference}:${input.amountKes}`)).slice(0, 24)}`;
 
@@ -84,10 +102,11 @@ export async function verifyDarajaWebhookSignature(
   payload: DarajaWebhookPayload,
   signature: string | null | undefined,
   secret: string | null | undefined,
+  sandboxEnvFlag?: string,
 ): Promise<boolean> {
-  if (!secret) return darajaSandboxEnabled();
+  if (!secret) return darajaSandboxEnabled(sandboxEnvFlag);
   if (!signature) return false;
   const expected = await signDarajaWebhookPayload(payload, secret);
-  return expected === signature.trim().toLowerCase();
+  return timingSafeEqualHex(expected, signature.trim().toLowerCase());
 }
 

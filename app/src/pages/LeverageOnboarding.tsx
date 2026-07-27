@@ -1,28 +1,16 @@
-import { useMemo, useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
-import { useToast } from '@/hooks/use-toast';
 import { formatKSh } from '@/lib/utils';
-import type { Chain } from '@/lib/chain';
-import { createCommunityRecord } from '@/lib/communities';
-import { normaliseKenyanPhone, toE164Kenyan } from '@/lib/phone';
-import { bootstrapInvisibleWallet, type PrivyWalletBootstrapResult } from '../../../packages/integrations/src/privy';
 import {
-  createUssdSession,
-  advanceUssdSession,
-  type UssdSession,
-} from '../../../packages/integrations/src/africastalking';
-import {
-  requestStkPush,
-  verifyDarajaWebhookSignature,
-  type DarajaWebhookPayload,
-  type DarajaStkPushResult,
-} from '../../../packages/integrations/src/daraja';
-import {
-  getCoopTemplate,
-  listCoopTemplates,
-  type CommunityType,
-  type PayoutMode,
-} from '../../../packages/coop-templates/src';
+  useLeverageOnboarding,
+  chainChoices,
+  tierChoices,
+  proposalStatuses,
+  chainLabel,
+  type FlowStatus,
+  type TierChoice,
+} from '@/hooks/useLeverageOnboarding';
+import { listCoopTemplates, type PayoutMode } from '@coop-templates';
 import {
   ArrowRight,
   CheckCircle2,
@@ -42,62 +30,6 @@ import {
   Vote,
 } from 'lucide-react';
 
-type Language = 'en' | 'sw';
-type ChainChoice = 'solana-devnet' | 'fuji' | 'base-sepolia' | 'stellar' | 'starknet';
-type TierChoice = 'mtaa' | 'kikundi' | 'sacco' | 'biashara' | 'serikali';
-type FlowStatus = 'idle' | 'working' | 'done';
-
-const copy = {
-  en: {
-    title: 'Onboarding foundation',
-    subtitle: 'Create the community record, activate members, and seed the first vote without exposing chain complexity.',
-    community: 'Community creation',
-    member: 'Member activation',
-    proposal: 'First governance action',
-    review: 'Review and queue',
-    paymentWarning: 'Payment confirmed is not membership active. Activation completes after attestation, mint, and chain confirmation.',
-    submitCommunity: 'Create community record',
-    startActivation: 'Start STK push',
-    activateBatch: 'Activate batch',
-    createWelcome: 'Create welcome proposal',
-  },
-  sw: {
-    title: 'Uanzishaji wa msingi',
-    subtitle: 'Tengeneza rekodi ya jumuiya, washa wanachama, na anzisha kura ya kwanza bila ugumu wa chain.',
-    community: 'Uundaji wa jumuiya',
-    member: 'Uanzishaji wa mwanachama',
-    proposal: 'Hatua ya kwanza ya uongozi',
-    review: 'Pitia na panga',
-    paymentWarning: 'Malipo kuthibitishwa si sawa na uanachama kuwa hai. Uanzishaji hukamilika baada ya attestation, mint, na chain confirmation.',
-    submitCommunity: 'Tengeneza rekodi ya jumuiya',
-    startActivation: 'Anzisha STK push',
-    activateBatch: 'Washa kundi',
-    createWelcome: 'Tengeneza pendekezo la makaribisho',
-  },
-} as const;
-
-const chainChoices: Array<{ id: ChainChoice; label: string; note: string; active: boolean }> = [
-  { id: 'solana-devnet', label: 'Solana devnet', note: 'Default per loop order', active: true },
-  { id: 'fuji', label: 'Fuji', note: 'Available for staging', active: true },
-  { id: 'base-sepolia', label: 'Base Sepolia', note: 'Available for staging', active: true },
-  { id: 'stellar', label: 'Stellar', note: 'Available for stage and settlement work', active: true },
-  { id: 'starknet', label: 'Starknet', note: 'Coming soon', active: false },
-];
-
-const tierChoices: Array<{ id: TierChoice; label: string; fee: number; note: string }> = [
-  { id: 'mtaa', label: 'mtaa', fee: 0, note: 'Free starter tier' },
-  { id: 'kikundi', label: 'kikundi', fee: 20, note: 'Light coordination' },
-  { id: 'sacco', label: 'sacco', fee: 20, note: 'Compliance-aware defaults' },
-  { id: 'biashara', label: 'biashara', fee: 20, note: 'Growth and payments' },
-  { id: 'serikali', label: 'serikali', fee: 20, note: 'Public body pattern' },
-];
-
-const proposalStatuses = ['Draft', 'Open', 'Quorum', 'Passed'];
-
-function chainLabel(value: ChainChoice): string {
-  return chainChoices.find((item) => item.id === value)?.label ?? value;
-}
-
 function sectionTone(active: boolean): string {
   return active ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border/70 bg-background/50 text-muted-foreground';
 }
@@ -113,169 +45,51 @@ function statusTone(status: FlowStatus): string {
   }
 }
 
-function queuedChainLabel(choice: ChainChoice): Chain {
-  switch (choice) {
-    case 'stellar':
-      return 'stellar';
-    case 'base-sepolia':
-      return 'base';
-    default:
-      return 'solana';
+export default function LeverageOnboarding() {
+  // Internal onboarding testbed writes real community records (createCommunityRecord)
+  // straight from sandbox integrations -- not gated for public/production traffic.
+  // Split into a wrapper so the hook below is never called conditionally.
+  if (import.meta.env.PROD) {
+    return <Navigate to="/" replace />;
   }
+  return <LeverageOnboardingScreen />;
 }
 
-export default function LeverageOnboarding() {
-  const { toast } = useToast();
-  const [language, setLanguage] = useState<Language>('en');
-  const [communityType, setCommunityType] = useState<CommunityType>('chama');
-  const [tier, setTier] = useState<TierChoice>('mtaa');
-  const [chain, setChain] = useState<ChainChoice>('solana-devnet');
-  const [payoutMode, setPayoutMode] = useState<PayoutMode>('rotating');
-  const [halalMode, setHalalMode] = useState(true);
-  const [phoneInput, setPhoneInput] = useState('');
-  const [inviteCode, setInviteCode] = useState('BARAZA-2026');
-  const [communityName, setCommunityName] = useState('Umoja Savings Circle');
-  const [schedule, setSchedule] = useState('Monthly on the 5th');
-  const [quorum, setQuorum] = useState(51);
-  const [amendmentNotice, setAmendmentNotice] = useState(7);
-  const [walletResult, setWalletResult] = useState<PrivyWalletBootstrapResult | null>(null);
-  const [stkResult, setStkResult] = useState<DarajaStkPushResult | null>(null);
-  const [ussdSession, setUssdSession] = useState<UssdSession>(() => createUssdSession(`ussd_${Date.now()}`));
-  const [activationStep, setActivationStep] = useState<'pending' | 'requesting' | 'confirmed' | 'active'>('pending');
-  const [proposalVote, setProposalVote] = useState<'yes' | 'no' | null>(null);
-  const [communityStatus, setCommunityStatus] = useState<FlowStatus>('idle');
-  const [activationStatus, setActivationStatus] = useState<FlowStatus>('idle');
-  const [proposalStatus, setProposalStatus] = useState<FlowStatus>('idle');
-  const [batchSize, setBatchSize] = useState(12);
-  const [batchLog, setBatchLog] = useState<string[]>([]);
-
-  const selectedTemplate = useMemo(() => getCoopTemplate(communityType), [communityType]);
-  const currentCopy = copy[language];
-  const localPhone = normaliseKenyanPhone(phoneInput);
-  const e164Phone = toE164Kenyan(phoneInput);
-  const membershipFee = tier === 'mtaa' ? 0 : 20;
-
-  const constitutionSummary = [
-    selectedTemplate.defaultContributionSchedule,
-    `${quorum}% quorum`,
-    `${amendmentNotice}-day amendment notice`,
-    payoutMode,
-    halalMode ? 'halal mode on' : 'halal mode off',
-  ].join(' · ');
-
-  async function handleCommunityCreate(): Promise<void> {
-    const phone = e164Phone ?? '+254700000000';
-    setCommunityStatus('working');
-    const wallet = await bootstrapInvisibleWallet({
-      phone,
-      communityType,
-      mode: 'sandbox',
-    });
-    setWalletResult(wallet);
-
-    const template = getCoopTemplate(communityType);
-    await createCommunityRecord({
-      name: communityName,
-      type: communityType,
-      description: `${template.summary} ${constitutionSummary}`,
-      membershipFee,
-      chain: queuedChainLabel(chain),
-      quorumPct: quorum,
-      approvalThresholdPct: selectedTemplate.featureFlags.complianceReports ? 66 : 60,
-      votingPeriodDays: 7,
-      treasuryPolicy: tier === 'mtaa' ? 'proposal-only' : 'multisig-ready',
-      createdBy: wallet.walletAddress,
-    });
-
-    setCommunityStatus('done');
-    toast({
-      title: language === 'en' ? 'Community record queued' : 'Rekodi ya jumuiya imepangwa',
-      description: language === 'en'
-        ? 'Supabase write completed or fell back to local storage. On-chain deployment is queued, not executed.'
-        : 'Uandishi wa Supabase umefanikiwa au umehifadhiwa local. Deployment ya chain imepangwa, haijatekelezwa.',
-    });
-  }
-
-  async function handleActivation(): Promise<void> {
-    setActivationStatus('working');
-    const resolvedPhone = e164Phone ?? '+254700000000';
-    const stk = await requestStkPush({
-      phone: resolvedPhone,
-      amountKes: 20,
-      reference: inviteCode,
-      accountReference: communityName,
-    });
-    setStkResult(stk);
-
-    const payload: DarajaWebhookPayload = {
-      Body: {
-        stkCallback: {
-          CheckoutRequestID: stk.checkoutRequestId,
-          MerchantRequestID: stk.merchantRequestId,
-          ResultCode: 0,
-          ResultDesc: 'Success',
-          CallbackMetadata: {
-            Item: [
-              { Name: 'MpesaReceiptNumber', Value: `MPESA${stk.checkoutRequestId.slice(0, 8).toUpperCase()}` },
-              { Name: 'Amount', Value: 20 },
-              { Name: 'PhoneNumber', Value: resolvedPhone },
-            ],
-          },
-        },
-      },
-    };
-
-    const verified = await verifyDarajaWebhookSignature(payload, null, null);
-    if (verified) {
-      setActivationStep('confirmed');
-      setActivationStep('active');
-      setActivationStatus('done');
-      toast({
-        title: language === 'en' ? 'Activation confirmed' : 'Uanzishaji umethibitishwa',
-        description: language === 'en'
-          ? 'Payment attested and member status moved to active in the sandbox flow.'
-          : 'Malipo yamethibitishwa na hali ya mwanachama imehamishwa kuwa active kwenye sandbox.',
-      });
-    } else {
-      setActivationStatus('idle');
-    }
-  }
-
-  async function handleBatchActivation(): Promise<void> {
-    const logs: string[] = [];
-    for (let index = 0; index < batchSize; index += 1) {
-      const resolvedPhone = `+254700000${String(index).padStart(3, '0')}`;
-      const result = await requestStkPush({
-        phone: resolvedPhone,
-        amountKes: 15,
-        reference: `${inviteCode}-B${index + 1}`,
-        accountReference: communityName,
-      });
-      logs.push(`${result.sandboxReceipt ?? result.checkoutRequestId} -> active`);
-    }
-    setBatchLog(logs);
-    setActivationStep('active');
-    setActivationStatus('done');
-  }
-
-  function handleUssdAdvance(): void {
-    const response = advanceUssdSession(ussdSession, phoneInput || inviteCode);
-    setUssdSession({ ...ussdSession, state: response.state });
-  }
-
-  async function handleWelcomeProposal(): Promise<void> {
-    setProposalStatus('working');
-    setProposalVote('yes');
-    setProposalStatus('done');
-    toast({
-      title: language === 'en' ? 'Welcome proposal created' : 'Pendekezo la makaribisho limeundwa',
-      description: language === 'en'
-        ? 'The first vote is seeded as a real governance action.'
-        : 'Kura ya kwanza imeanzishwa kama hatua halisi ya uongozi.',
-    });
-  }
-
-  const activeTemplate = getCoopTemplate(communityType);
+function LeverageOnboardingScreen() {
+  const {
+    language, setLanguage,
+    communityType, setCommunityType,
+    tier, setTier,
+    chain, setChain,
+    payoutMode, setPayoutMode,
+    halalMode, setHalalMode,
+    phoneInput, setPhoneInput,
+    inviteCode, setInviteCode,
+    communityName, setCommunityName,
+    schedule, setSchedule,
+    quorum, setQuorum,
+    amendmentNotice, setAmendmentNotice,
+    walletResult,
+    stkResult,
+    ussdSession,
+    activationStep,
+    proposalVote,
+    communityStatus,
+    activationStatus,
+    proposalStatus,
+    batchSize, setBatchSize,
+    batchLog,
+    selectedTemplate,
+    currentCopy,
+    localPhone,
+    membershipFee,
+    activationAmountKes,
+    handleCommunityCreate,
+    handleActivation,
+    handleBatchActivation,
+    handleUssdAdvance,
+    handleWelcomeProposal,
+  } = useLeverageOnboarding();
 
   return (
     <Layout>
@@ -557,7 +371,7 @@ export default function LeverageOnboarding() {
                   <div className="rounded-2xl border border-border/70 bg-background p-4">
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Live summary</p>
                     <dl className="mt-4 space-y-3 text-sm">
-                      <div className="flex items-start justify-between gap-3"><dt className="text-muted-foreground">Template</dt><dd className="font-semibold">{activeTemplate.label}</dd></div>
+                      <div className="flex items-start justify-between gap-3"><dt className="text-muted-foreground">Template</dt><dd className="font-semibold">{selectedTemplate.label}</dd></div>
                       <div className="flex items-start justify-between gap-3"><dt className="text-muted-foreground">Contribution schedule</dt><dd className="text-right font-semibold">{schedule}</dd></div>
                       <div className="flex items-start justify-between gap-3"><dt className="text-muted-foreground">Payout mode</dt><dd className="font-semibold">{payoutMode}</dd></div>
                       <div className="flex items-start justify-between gap-3"><dt className="text-muted-foreground">Chain</dt><dd className="font-semibold">{chainLabel(chain)}</dd></div>
@@ -633,8 +447,8 @@ export default function LeverageOnboarding() {
                   <Landmark className="h-5 w-5 text-primary" />
                 </div>
                 <div className="mt-4 space-y-2 text-sm">
-                  <div className="flex items-center justify-between"><span className="text-muted-foreground">Member activation</span><span className="font-semibold">{formatKSh(membershipFee || 20)}</span></div>
-                  <div className="flex items-center justify-between"><span className="text-muted-foreground">Bulk treasurer path</span><span className="font-semibold">{formatKSh(15)}</span></div>
+                  <div className="flex items-center justify-between"><span className="text-muted-foreground">Member activation</span><span className="font-semibold">{formatKSh(activationAmountKes)}</span></div>
+                  <div className="flex items-center justify-between"><span className="text-muted-foreground">Bulk treasurer path</span><span className="font-semibold">{formatKSh(activationAmountKes)}</span></div>
                   <div className="flex items-center justify-between"><span className="text-muted-foreground">Tier</span><span className="font-semibold">{tier}</span></div>
                   <div className="flex items-center justify-between"><span className="text-muted-foreground">Chain</span><span className="font-semibold">{chainLabel(chain)}</span></div>
                 </div>

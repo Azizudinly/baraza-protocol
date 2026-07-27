@@ -5,7 +5,11 @@ import path from 'path';
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: { '@': path.resolve(__dirname, './src') },
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+      '@integrations': path.resolve(__dirname, '../packages/integrations/src'),
+      '@coop-templates': path.resolve(__dirname, '../packages/coop-templates/src'),
+    },
   },
   test: {
     environment: 'jsdom',

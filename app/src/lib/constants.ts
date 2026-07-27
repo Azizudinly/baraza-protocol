@@ -104,8 +104,16 @@ export const MOCK_DECISIONS: Decision[] = [
   { id: '5', communityId: '3', title: 'Hackathon Sponsorship', description: 'Sponsor 5 members to attend NairobiHacks 2025 with accommodation and entry fees covered by community fund.', fundingAmount: 75000, proposedBy: 'Kelvin N.', votesFor: 67, votesAgainst: 10, totalMembers: 89, status: 'active', createdAt: '2025-04-20', endsAt: '2026-08-10' },
 ];
 
-// 23 community types — source: Notion product spec 2026-06-08
+// Canonical community type list — this is the single source of truth for every
+// value the `communities.type` column can hold. It must stay a superset of:
+//   - GOVERNANCE_PRESETS keys (app/src/pages/CreateCommunity.tsx)
+//   - CommunityType in packages/coop-templates/src/index.ts
+//   - communities_type_chk in supabase/migrations/026_leverage_foundation.sql
+// 23 original entries — source: Notion product spec 2026-06-08.
+// 'chama', 'housing', 'organization', 'government' added to close drift
+// against GOVERNANCE_PRESETS, coop-templates, and the DB constraint's default.
 export const COMMUNITY_TYPES = [
+  { value: 'chama',             label: 'Chama' },
   { value: 'savings',           label: 'Savings Group (Chama)' },
   { value: 'stokvel',           label: 'Stokvel' },
   { value: 'sacco',             label: 'SACCO' },
@@ -129,4 +137,15 @@ export const COMMUNITY_TYPES = [
   { value: 'political',         label: 'Political Caucus' },
   { value: 'supply_chain',      label: 'Supply Chain Cooperative' },
   { value: 'study',             label: 'Study Circle' },
-];
+  { value: 'housing',           label: 'Housing SACCO' },
+  { value: 'organization',      label: 'Organization' },
+  { value: 'government',        label: 'Government / Public Body' },
+] as const;
+
+export type CommunityType = (typeof COMMUNITY_TYPES)[number]['value'];
+
+const COMMUNITY_TYPE_VALUE_SET = new Set<string>(COMMUNITY_TYPES.map((t) => t.value));
+
+export function isCommunityType(value: string): value is CommunityType {
+  return COMMUNITY_TYPE_VALUE_SET.has(value);
+}

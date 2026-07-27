@@ -20,7 +20,10 @@ function pseudoAddress(seed: string): string {
 }
 
 export async function bootstrapInvisibleWallet(input: PrivyWalletBootstrapInput): Promise<PrivyWalletBootstrapResult> {
-  const mode = input.mode ?? (import.meta.env.VITE_PRIVY_APP_ID ? 'live' : 'sandbox');
+  // Caller decides live vs sandbox (e.g. from import.meta.env.VITE_PRIVY_APP_ID
+  // in a Vite app). This package never reads env itself so it stays safe to
+  // import server-side.
+  const mode = input.mode ?? 'sandbox';
   const seed = `${input.phone}:${input.communityType}:${mode}`;
 
   return {
