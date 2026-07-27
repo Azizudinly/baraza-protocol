@@ -15,6 +15,7 @@ interface AccountContextValue {
   authenticated: boolean;
   accountId: string | null;
   displayName: string;
+  getAccessToken: () => Promise<string | null>;
   country: AccountCountry;
   setCountry: (country: AccountCountryCode) => void;
   login: () => void;
@@ -31,7 +32,7 @@ interface AccountBridgeProps {
 }
 
 function AccountBridge({ country, setCountry, children }: AccountBridgeProps) {
-  const { ready, authenticated, user, login, logout } = usePrivy();
+  const { ready, authenticated, user, login, logout, getAccessToken } = usePrivy();
   const displayName = user?.email?.address ?? user?.phone?.number ?? 'Baraza member';
   const accountId = user?.wallet?.address ?? user?.id ?? null;
 
@@ -41,12 +42,13 @@ function AccountBridge({ country, setCountry, children }: AccountBridgeProps) {
     authenticated,
     accountId,
     displayName,
+    getAccessToken,
     country,
     setCountry,
     login: () => login({ loginMethods: ['email', 'sms'] }),
     createAccount: () => login({ loginMethods: ['email', 'sms'] }),
     logout,
-  }), [accountId, authenticated, country, displayName, login, logout, ready, setCountry]);
+  }), [accountId, authenticated, country, displayName, getAccessToken, login, logout, ready, setCountry]);
 
   return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;
 }
@@ -68,6 +70,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
         authenticated: false,
         accountId: null,
         displayName: 'Baraza member',
+        getAccessToken: async () => null,
         country,
         setCountry,
         login: () => undefined,

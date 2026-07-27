@@ -19,6 +19,7 @@
     "@apollo/client": "^4.2.0",
     "@coral-xyz/anchor": "^0.32.1",
     "@gooddollar/goodprotocol": "^2.2.1",
+    "@privy-io/node": "^0.26.0",
     "@privy-io/react-auth": "^3.27.1",
     "@radix-ui/react-toast": "^1.2.15",
     "@sendgrid/mail": "^8.1.6",
