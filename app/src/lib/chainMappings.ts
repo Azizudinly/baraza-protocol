@@ -1,4 +1,4 @@
-type ChainId = 'solana';
+type ChainId = 'solana' | 'stellar';
 
 export type CommunityChainMapping = {
   localId: string;

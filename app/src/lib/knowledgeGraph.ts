@@ -114,6 +114,13 @@ const READINESS_TASKS: KnowledgeNode[] = [
     summary: 'Send a real testnet XLM transaction and confirm Horizon verification records the order.',
   },
   {
+    id: 'task:stellar-soroban-v2-deploy',
+    type: 'readiness-task',
+    label: 'Deploy Soroban v2 five-contract workspace to testnet',
+    status: 'blocker',
+    summary: 'community_registry/governance/membership/payment_attestation/treasury_vault build and pass local tests. CreateCommunity.tsx and the governance hooks (useCreateDecision/useCastVote) now call them via lib/programs/stellarClient.ts when a contract ID is configured, mirroring the Solana chainClient pattern — but every address in stellarAddresses.ts is still NOT_DEPLOYED, so these calls fall back to off-chain-only today. Deploy via contracts/stellar/scripts/deploy.sh, record IDs in contracts/stellar/addresses/testnet-v2.json, then populate the VITE_STELLAR_*_ID env vars.',
+  },
+  {
     id: 'task:gooddollar-celo',
     type: 'readiness-task',
     label: 'Connect GoodDollar on Celo Alfajores',

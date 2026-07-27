@@ -72,3 +72,9 @@ export const STELLAR_NETWORK_PASSPHRASE =
   STELLAR_NETWORK === 'mainnet'
     ? 'Public Global Stellar Network ; September 2015'
     : 'Test SDF Network ; September 2015';
+// Soroban contract calls (simulate/send) go through the RPC endpoint, not
+// Horizon — Horizon serves classic-operation history only.
+export const STELLAR_SOROBAN_RPC_URL =
+  STELLAR_NETWORK === 'mainnet'
+    ? 'https://soroban-rpc.mainnet.stellar.org'
+    : 'https://soroban-testnet.stellar.org';

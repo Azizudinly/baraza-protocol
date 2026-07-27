@@ -9,6 +9,10 @@ import { EXPECTED_GENESIS, NETWORK_LABEL } from '@/lib/network';
 import { useChain } from '@/hooks/useChain';
 import { useEvmChain } from '@/hooks/useEvmChain';
 import type { Chain } from '@/lib/chain';
+// `FreighterApi` + the `Window.freighterApi`/`Window.freighter` global
+// augmentation live in useStellarWallet.ts (the shared connection hook) —
+// removed the local duplicate here to avoid two conflicting declarations of
+// the same global; TypeScript merges the one from that module program-wide.
 import {
   clearPhoneAuthSession,
   formatAuthIdentifier,
@@ -18,19 +22,6 @@ import {
   saveEmailSession,
   savePhoneSession,
 } from '@/lib/phoneAuth';
-
-interface FreighterApi {
-  isConnected?: () => Promise<boolean> | boolean;
-  getPublicKey?: () => Promise<string> | string;
-  requestAccess?: () => Promise<string> | string;
-}
-
-declare global {
-  interface Window {
-    freighterApi?: FreighterApi;
-    freighter?: FreighterApi;
-  }
-}
 
 const EVM_CHAINS = new Set<Chain>(['ethereum', 'base', 'arbitrum', 'optimism', 'polygon', 'celo', 'bnb']);
 
