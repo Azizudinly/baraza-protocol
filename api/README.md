@@ -4,8 +4,9 @@ The Vercel project's Root Directory is set to the repo root, not `app/`.
 Vercel's zero-config function discovery only looks for serverless
 functions inside a literal `<root-directory>/api/` folder — it cannot
 see `app/api/`, where the real route implementations and their tests
-live (see `app/vercel.json`, which is the config that *would* apply if
-Root Directory were ever set back to `app`).
+live. (The former `app/vercel.json` was a duplicate of this root
+config and has been removed — the root `vercel.json` is the only
+Vercel configuration read while Root Directory stays at the repo root.)
 
 Every file here is a thin re-export shim: real logic stays in
 `app/api/`. When adding a new route under `app/api/<path>.ts`, add a
