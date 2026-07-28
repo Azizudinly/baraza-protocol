@@ -319,7 +319,10 @@ async function persistOrder(input: {
   return { status: 'persisted' };
 }
 
-export default async function handler(req: Request): Promise<Response> {
+// Named HTTP-method exports, not a bare default export — see
+// app/api/communities/index.ts for why (Vercel Node.js runtime silently
+// drops the Response from a bare `export default function handler(req)`).
+async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       headers: {
@@ -436,3 +439,5 @@ export default async function handler(req: Request): Promise<Response> {
     }, { status: 422 });
   }
 }
+
+export { handler as POST, handler as OPTIONS };

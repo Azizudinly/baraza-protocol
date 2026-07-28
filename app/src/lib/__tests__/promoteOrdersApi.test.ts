@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import handler from '../../../api/cron/promote-orders';
+import { GET as handler } from '../../../api/cron/promote-orders';
 
 function request(secret = 'cron-secret'): Request {
   return new Request('https://baraza.example/api/cron/promote-orders', {

@@ -605,7 +605,13 @@ async function patchOrders(from: string, to: string): Promise<number> {
   return Array.isArray(data) ? data.length : 0;
 }
 
-export default async function handler(req: Request): Promise<Response> {
+// Named export, not a bare default export — Vercel's Node.js runtime treats
+// `export default function handler(req)` as the legacy `(req, res) => void`
+// signature and silently discards the Response this returns, hanging the
+// request until the function timeout (this is what caused the observed
+// "Task timed out after 60 seconds" errors on this route in production).
+// Vercel Cron invokes this route with GET.
+async function handler(req: Request): Promise<Response> {
   if (!isAuthorized(req)) {
     return json({ error: 'unauthorized' }, { status: 401 });
   }
@@ -652,3 +658,5 @@ export default async function handler(req: Request): Promise<Response> {
     tickAt: new Date().toISOString(),
   }, { status: 200 });
 }
+
+export { handler as GET, handler as POST };
