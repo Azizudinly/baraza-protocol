@@ -3,6 +3,10 @@ import { ChevronRight, Coins, Medal, MessageSquareText } from "lucide-react";
 import Layout from "@/components/Layout";
 import HeroSection from "@/components/HeroSection";
 import FeaturesSection from "@/components/FeaturesSection";
+import AIPlatformSection from "@/components/AIPlatformSection";
+import FlowWalkthrough from "@/components/FlowWalkthrough";
+import ShowReelSection from "@/components/ShowReelSection";
+import { CommunityMarquee } from "@/components/CommunityMarquee";
 import CTASection from "@/components/CTASection";
 import { useSeo } from "@/lib/seo";
 
@@ -42,6 +46,10 @@ export default function Index() {
     <Layout>
       <HeroSection />
       <FeaturesSection />
+      <AIPlatformSection />
+      <FlowWalkthrough />
+      <ShowReelSection />
+      <CommunityMarquee />
 
       <section className="py-12 sm:py-14">
         <div className="container mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
