@@ -116,9 +116,9 @@ const READINESS_TASKS: KnowledgeNode[] = [
   {
     id: 'task:stellar-soroban-v2-deploy',
     type: 'readiness-task',
-    label: 'Deploy Soroban v2 five-contract workspace to testnet',
-    status: 'blocker',
-    summary: 'community_registry/governance/membership/payment_attestation/treasury_vault build and pass local tests. CreateCommunity.tsx and the governance hooks (useCreateDecision/useCastVote) now call them via lib/programs/stellarClient.ts when a contract ID is configured, mirroring the Solana chainClient pattern — but every address in stellarAddresses.ts is still NOT_DEPLOYED, so these calls fall back to off-chain-only today. Deploy via contracts/stellar/scripts/deploy.sh, record IDs in contracts/stellar/addresses/testnet-v2.json, then populate the VITE_STELLAR_*_ID env vars.',
+    label: 'Verify Soroban v2 testnet contracts against a live round-trip',
+    status: 'next',
+    summary: 'All five contracts are deployed to testnet (contracts/stellar/addresses/testnet.json, 2026-07-27) and their IDs are now inlined as testnet defaults in lib/programs/stellarAddresses.ts, so CreateCommunity.tsx and the governance hooks (useCreateDecision/useCastVote) call them for real via lib/programs/stellarClient.ts. What is NOT yet done: no simulate/sign/submit round-trip has ever been executed against these contracts, so the method names and argument shapes in stellarClient.ts are still only verified against the Rust source, not against the chain. Remaining: (1) run one real community creation through Freighter on testnet and confirm the tx resolves; (2) treasury_vault is deployed but NOT initialized — initialize it with per-community params before anything calls it; (3) governance.vote is binary (support: bool), so abstain votes stay local-only until the contract gains a third option.',
   },
   {
     id: 'task:gooddollar-celo',
