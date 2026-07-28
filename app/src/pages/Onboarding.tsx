@@ -79,7 +79,14 @@ export default function Onboarding() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="fixed left-0 top-0 z-50 w-full bg-background/80 backdrop-blur-md">
-        <div className="h-1.5 w-full bg-surface">
+        <div
+          className="h-1.5 w-full bg-surface"
+          role="progressbar"
+          aria-label="Account setup progress"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={STEP_PROGRESS[step]}
+        >
           <div
             className="h-full bg-primary transition-all duration-500 ease-out"
             style={{ width: `${STEP_PROGRESS[step]}%` }}
