@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { Users, ArrowLeft, CheckCircle2, Loader2, Phone, ShieldCheck, Wallet, Hash, Smartphone, MessageCircle, Landmark } from 'lucide-react';
+import { Users, ArrowLeft, CheckCircle2, Loader2, Phone, ShieldCheck, Wallet, Hash, Smartphone, MessageCircle, Landmark, Link2 } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { DAO_CREATION_FEE_KES, PAYBILL_ADDON_FEE_KES, USSD_ADDON_FEE_KES, isCommunityType, type CommunityType } from '@/lib/constants';
 import { formatKSh } from '@/lib/utils';
@@ -13,7 +13,7 @@ import { createCommunityRecord } from '@/lib/communities';
 import CommunityBanner from '@/components/CommunityBanner';
 import { useChain } from '@/hooks/useChain';
 import { useSeo } from '@/lib/seo';
-import { type Chain } from '@/lib/chain';
+import { CHAINS, type Chain } from '@/lib/chain';
 import { AskAkili } from '@/akili/AskAkili';
 import { useBarazaChain } from '@/hooks/useBarazaData';
 import { communityPda, toSlug } from '@/lib/programs';
@@ -858,6 +858,20 @@ const CreateCommunity: React.FC = () => {
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Governance chain indicator */}
+              <div className="flex items-center gap-2 rounded-lg border border-primary/25 bg-primary/5 px-4 py-3 text-sm">
+                <Link2 className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+                <span className="text-muted-foreground">
+                  Governance and membership will be recorded on{' '}
+                  <span className="font-semibold text-foreground">
+                    {CHAINS[selectedCommunityChain].label}
+                  </span>{' '}
+                  ({CHAINS[selectedCommunityChain].testnet.label}). Switch the funding rail from the{' '}
+                  <span className="font-semibold text-foreground">Fund</span> menu in the header before creating
+                  if you want a different chain.
+                </span>
               </div>
 
               {/* Payment */}
