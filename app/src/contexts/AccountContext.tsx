@@ -7,7 +7,7 @@ import {
   type AccountCountry,
   type AccountCountryCode,
 } from '@/lib/accountLocale';
-import { getPrivyAppId } from '@/lib/wallet/mpc';
+import { getPrivyAppId, isPrivyPhoneAuthEnabled } from '@/lib/wallet/mpc';
 
 interface AccountContextValue {
   configured: boolean;
@@ -34,6 +34,10 @@ function AccountBridge({ country, setCountry, children }: AccountBridgeProps) {
   const { ready, authenticated, user, login, logout } = usePrivy();
   const displayName = user?.email?.address ?? user?.phone?.number ?? 'Baraza member';
   const accountId = user?.wallet?.address ?? user?.id ?? null;
+  const loginMethods = useMemo(
+    () => (isPrivyPhoneAuthEnabled() ? (['email', 'sms'] as const) : (['email'] as const)),
+    [],
+  );
 
   const value = useMemo<AccountContextValue>(() => ({
     configured: true,
@@ -43,10 +47,10 @@ function AccountBridge({ country, setCountry, children }: AccountBridgeProps) {
     displayName,
     country,
     setCountry,
-    login: () => login({ loginMethods: ['email', 'sms'] }),
-    createAccount: () => login({ loginMethods: ['email', 'sms'] }),
+    login: () => login({ loginMethods: [...loginMethods] }),
+    createAccount: () => login({ loginMethods: [...loginMethods] }),
     logout,
-  }), [accountId, authenticated, country, displayName, login, logout, ready, setCountry]);
+  }), [accountId, authenticated, country, displayName, login, loginMethods, logout, ready, setCountry]);
 
   return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>;
 }
@@ -79,17 +83,21 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
+  const phoneAuthEnabled = isPrivyPhoneAuthEnabled();
+
   return (
     <PrivyProvider
       appId={appId}
       config={{
-        loginMethods: ['email', 'sms'],
+        loginMethods: phoneAuthEnabled ? ['email', 'sms'] : ['email'],
         intl: { defaultCountry: country.code },
         appearance: {
           theme: 'dark',
           accentColor: '#f97316',
           landingHeader: 'Welcome to Baraza',
-          loginMessage: 'Use your phone number or email to continue.',
+          loginMessage: phoneAuthEnabled
+            ? 'Use your phone number or email to continue.'
+            : 'Use your email to continue.',
           showWalletLoginFirst: false,
         },
         embeddedWallets: {

@@ -36,6 +36,10 @@ export function getPrivyAppId(): string {
   return import.meta.env.VITE_PRIVY_APP_ID ?? '';
 }
 
+export function isPrivyPhoneAuthEnabled(): boolean {
+  return import.meta.env.VITE_PRIVY_PHONE_AUTH_ENABLED !== 'false';
+}
+
 export function isMpcWalletConfigured(): boolean {
   return Boolean(getPrivyAppId());
 }
