@@ -41,11 +41,18 @@
     },
     "api/cron/promote-orders.ts": {
       "maxDuration": 60
+    },
+    "api/cron/settle-retro-allocations.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
     {
       "path": "/api/cron/promote-orders",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/settle-retro-allocations",
       "schedule": "0 0 * * *"
     }
   ]

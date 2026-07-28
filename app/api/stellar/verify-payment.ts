@@ -332,7 +332,7 @@ async function handler(req: Request): Promise<Response> {
       },
     });
   }
-  if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, { status: 405 });
+if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, { status: 405, headers: { Allow: 'POST, OPTIONS' } });
 
   let body: VerifyStellarRequest;
   try {
