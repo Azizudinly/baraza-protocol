@@ -104,8 +104,8 @@ describe('CHAINS metadata', () => {
 });
 
 describe('readStoredChain', () => {
-  it('returns solana as default when localStorage is empty', () => {
-    expect(readStoredChain()).toBe('solana');
+  it('returns stellar as default when localStorage is empty', () => {
+    expect(readStoredChain()).toBe('stellar');
   });
 
   it('returns stored solana when set', () => {
@@ -128,19 +128,19 @@ describe('readStoredChain', () => {
     expect(readStoredChain()).toBe('celo');
   });
 
-  it('falls back to Solana for hidden roadmap rails', () => {
+  it('falls back to Stellar for hidden roadmap rails', () => {
     writeStoredChain('base');
-    expect(readStoredChain()).toBe('solana');
+    expect(readStoredChain()).toBe('stellar');
   });
 
-  it('falls back to solana when localStorage holds a garbage value', () => {
+  it('falls back to stellar when localStorage holds a garbage value', () => {
     window.localStorage.setItem('baraza:chain', 'garbage');
-    expect(readStoredChain()).toBe('solana');
+    expect(readStoredChain()).toBe('stellar');
   });
 
-  it('falls back to solana when localStorage holds an empty string', () => {
+  it('falls back to stellar when localStorage holds an empty string', () => {
     window.localStorage.setItem('baraza:chain', '');
-    expect(readStoredChain()).toBe('solana');
+    expect(readStoredChain()).toBe('stellar');
   });
 });
 

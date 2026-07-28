@@ -287,7 +287,7 @@ const CreateCommunity: React.FC = () => {
   const [walletChain, setWalletChain] = useState<Extract<Chain, 'solana' | 'stellar' | 'base' | 'arbitrum' | 'optimism' | 'celo'>>(
     chain === 'solana' || chain === 'stellar' || chain === 'base' || chain === 'arbitrum' || chain === 'optimism' || chain === 'celo'
       ? chain
-      : 'solana',
+      : 'stellar',
   );
   const [form, setForm] = useState(() => {
     const requestedType = searchParams.get('type') ?? '';

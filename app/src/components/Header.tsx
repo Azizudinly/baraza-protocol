@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { CircleUserRound, LogIn, Menu, Moon, MoreHorizontal, PlayCircle, Search, Sparkles, Sun, UserPlus, X } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
+import ChainSelector from "@/components/ChainSelector";
 import { useAkiliChat } from "@/akili/useAkiliChat";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
@@ -169,6 +170,7 @@ export default function Header() {
         </div>
 
         <div className="relative flex shrink-0 items-center gap-2">
+          <ChainSelector variant="desktop" className="hidden md:block" />
           <div className="hidden items-center gap-2 lg:flex">
             {account.authenticated ? (
               <Link
@@ -383,6 +385,9 @@ export default function Header() {
                   </p>
                 </div>
               )}
+            </div>
+            <div className="mb-3 border-b border-border/60 pb-4">
+              <ChainSelector variant="mobile" />
             </div>
             {navLinks.map((link) => {
               const isActive =
