@@ -387,7 +387,14 @@ export const VISIBLE_CHAIN_LIST: ChainMeta[] = [
 ];
 
 const STORAGE_KEY = 'baraza:chain';
-const DEFAULT_CHAIN: Chain = 'solana';
+// Stellar is the only chain with contracts actually live and initialized on
+// testnet today (see contracts/stellar/addresses/testnet.json). Solana's
+// Anchor program is written but not deployed to devnet, so defaulting new
+// users there means every community creation silently falls back to
+// off-chain/record-only with no visible indication. Default to the chain
+// that genuinely works; solana remains selectable once its devnet deploy
+// lands.
+const DEFAULT_CHAIN: Chain = 'stellar';
 const VISIBLE_CHAIN_IDS = new Set<Chain>(VISIBLE_CHAIN_LIST.map((chain) => chain.id));
 
 export function readStoredChain(): Chain {
