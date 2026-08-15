@@ -68,8 +68,14 @@ async function handler(req: Request): Promise<Response> {
   const supabaseUrl = process.env.SUPABASE_URL?.trim();
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
+  // M1-C2: Phase 1 requires an explicit backend failure here instead of a
+  // success-shaped fallback. /api/README.md only governs routing; this route
+  // must own its own durability policy and fail fast when persistence is absent.
   if (!supabaseUrl || !serviceKey) {
-    return json({ persisted: false, message: 'Supabase not configured' }, { status: 200 });
+    return json(
+      { error: 'db_not_configured', message: 'Supabase persistence is required for community creation.' },
+      { status: 503 },
+    );
   }
 
   const chain = body.chain ?? 'solana';

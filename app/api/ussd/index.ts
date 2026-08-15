@@ -58,8 +58,9 @@ async function createPaymentOrder(pending: PendingPayOrder, baseUrl: string): Pr
       activation_secret_hash: activationSecretHash,
       amount_expected: pending.amount,
       currency: pending.currency,
-      status: 'PAYMENT_CONFIRMED',
-      confirmed_at: new Date().toISOString(),
+      // M6-C4: USSD can create the order, but it must not mark it confirmed.
+      // Phase 1 requires the verified payment route to own that transition.
+      status: 'PAYMENT_PENDING',
       metadata: { source: 'ussd', phone: pending.phoneNumber },
     }),
   });

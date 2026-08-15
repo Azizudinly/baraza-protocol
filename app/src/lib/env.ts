@@ -27,7 +27,7 @@ const envSchema = z.object({
 
   return {
     ...env,
-    VITE_SITE_URL: env.VITE_SITE_URL ?? 'https://baraza-protocol.vercel.app',
+    VITE_SITE_URL: env.VITE_SITE_URL ?? 'https://barazaprotocol.com',
     VITE_RPC_ENDPOINT: env.VITE_RPC_ENDPOINT ?? solanaRpc,
     VITE_STELLAR_HORIZON_URL: env.VITE_STELLAR_HORIZON_URL ??
       (stellarMainnet ? 'https://horizon.stellar.org' : 'https://horizon-testnet.stellar.org'),

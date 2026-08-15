@@ -5,4 +5,4 @@ Disallow: /profile
 Disallow: /dashboard/
 Disallow: /join/
 
-Sitemap: https://baraza-protocol.vercel.app/sitemap.xml
+Sitemap: https://barazaprotocol.com/sitemap.xml

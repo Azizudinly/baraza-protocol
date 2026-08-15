@@ -33,8 +33,8 @@ beforeEach(() => {
 
 describe('BRZA pricing', () => {
   it('publishes cache-safe token metadata URLs', () => {
-    expect(BRZA_ASSET.logoUrl).toBe('https://baraza-protocol.vercel.app/brza-token-logo.svg');
-    expect(BRZA_ASSET.metadataUrl).toBe('https://baraza-protocol.vercel.app/brza-token.json');
+    expect(BRZA_ASSET.logoUrl).toBe('https://barazaprotocol.com/brza-token-logo.svg');
+    expect(BRZA_ASSET.metadataUrl).toBe('https://barazaprotocol.com/brza-token.json');
   });
 
   it('rejects unsupported currencies instead of treating them as USD', () => {
