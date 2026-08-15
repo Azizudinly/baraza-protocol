@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   darajaSandboxEnabled,
   requestStkPush,
+  requestTransactionStatusQuery,
   signDarajaWebhookPayload,
   verifyDarajaWebhookSignature,
   type DarajaWebhookPayload,
@@ -17,6 +18,17 @@ const payload: DarajaWebhookPayload = {
     },
   },
 };
+
+beforeEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
 
 describe('darajaSandboxEnabled', () => {
   it('defaults to sandbox when the flag is unset (m-003: caller-supplied, no import.meta.env inside the package)', () => {
@@ -45,7 +57,34 @@ describe('requestStkPush', () => {
     expect(result.merchantRequestId).toMatch(/^mr_/);
   });
 
-  it('respects an explicit sandbox: false and omits the sandbox receipt', async () => {
+  it('respects an explicit sandbox: false and uses the live OAuth/STK path when credentials are present', async () => {
+    vi.stubEnv('MPESA_CONSUMER_KEY', 'live-consumer-key');
+    vi.stubEnv('MPESA_CONSUMER_SECRET', 'live-consumer-secret');
+    vi.stubEnv('MPESA_SHORTCODE', '174379');
+    vi.stubEnv('MPESA_PASSKEY', 'live-passkey');
+    vi.stubEnv('MPESA_CALLBACK_URL', 'https://example.com/api/mpesa/callback');
+    vi.stubGlobal('window', undefined);
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/oauth/v1/generate')) {
+        return new Response(JSON.stringify({ access_token: 'live-token', expires_in: 3600 }), { status: 200 });
+      }
+      if (url.includes('/mpesa/stkpush/v1/processrequest')) {
+        return new Response(
+          JSON.stringify({
+            ResponseCode: '0',
+            ResponseDescription: 'Success',
+            CheckoutRequestID: 'ws_live123',
+            MerchantRequestID: 'mr_live123',
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response('{}', { status: 404 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
     const result = await requestStkPush({
       phone: '+254700000000',
       amountKes: 20,
@@ -55,6 +94,9 @@ describe('requestStkPush', () => {
 
     expect(result.mode).toBe('live');
     expect(result.sandboxReceipt).toBeUndefined();
+    expect(result.checkoutRequestId).toBe('ws_live123');
+    expect(result.merchantRequestId).toBe('mr_live123');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('derives deterministic, input-dependent checkout/merchant IDs', async () => {
@@ -64,6 +106,55 @@ describe('requestStkPush', () => {
 
     expect(a.checkoutRequestId).toBe(b.checkoutRequestId);
     expect(a.checkoutRequestId).not.toBe(c.checkoutRequestId);
+  });
+});
+
+describe('requestTransactionStatusQuery', () => {
+  it('fires an independent TransactionStatusQuery using live credentials before trusting a callback', async () => {
+    vi.stubEnv('MPESA_CONSUMER_KEY', 'live-consumer-key');
+    vi.stubEnv('MPESA_CONSUMER_SECRET', 'live-consumer-secret');
+    vi.stubEnv('MPESA_SHORTCODE', '174379');
+    vi.stubEnv('MPESA_PASSKEY', 'live-passkey');
+    vi.stubEnv('MPESA_INITIATOR_USERNAME', 'initiator');
+    vi.stubEnv('MPESA_INITIATOR_SECURITY_CREDENTIAL', 'encrypted-credential');
+    vi.stubEnv('MPESA_CALLBACK_URL', 'https://example.com/api/mpesa/callback');
+    vi.stubGlobal('window', undefined);
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/oauth/v1/generate')) {
+        return new Response(JSON.stringify({ access_token: 'live-token', expires_in: 3600 }), { status: 200 });
+      }
+      if (url.includes('/mpesa/transactionstatus/v1/query')) {
+        return new Response(JSON.stringify({
+          ResponseCode: '0',
+          ResponseDescription: 'The service request is processed successfully.',
+          ConversationID: 'CON-123',
+          OriginatorConversationID: 'ORG-123',
+          ResultCode: '0',
+          ResultDesc: 'The service request is processed successfully.',
+        }), { status: 200 });
+      }
+      return new Response('{}', { status: 404 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await requestTransactionStatusQuery({
+      transactionId: 'ws_live123',
+      remarks: 'Verification of contribution payment',
+      resultUrl: 'https://example.com/api/mpesa/status-result',
+      queueTimeoutUrl: 'https://example.com/api/mpesa/status-timeout',
+    });
+
+    expect(result.mode).toBe('live');
+    expect(result.resultCode).toBe('0');
+    expect(result.transactionId).toBe('ws_live123');
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/mpesa/transactionstatus/v1/query'),
+      expect.objectContaining({
+        method: 'POST',
+      }),
+    );
   });
 });
 

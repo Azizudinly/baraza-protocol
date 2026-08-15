@@ -11,7 +11,7 @@ type SeoOptions = {
 };
 
 const SITE_NAME = "Baraza Protocol";
-const FALLBACK_ORIGIN = "https://baraza-protocol.vercel.app";
+const FALLBACK_ORIGIN = "https://barazaprotocol.com";
 const DEFAULT_IMAGE_PATH = "/og-image.svg";
 
 function getOrigin(): string {

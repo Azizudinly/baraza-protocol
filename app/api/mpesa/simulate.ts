@@ -1,22 +1,10 @@
 /**
- * M-Pesa simulator — sandbox-only endpoint that fakes the
- * Africa's Talking webhook lifecycle for local + preview deploys.
+ * M-Pesa simulator — local/dev-only helper for Phase 1 M6 work.
  *
- * Real flow (per MVP_ARCHITECTURE.md §7):
- *   client → POST /api/mpesa/simulate
- *          → write payment_order row (Supabase)
- *          → write payment_event row (Supabase)
- *          → transition order to PAYMENT_CONFIRMED
- *          → enqueue mint_job
- *
- * MVP-stub behaviour (this file):
- *   - Validates request shape
- *   - Generates a deterministic-looking order_id
- *   - Writes a payment_order row to Supabase IF SUPABASE_SERVICE_ROLE_KEY is set
- *   - Returns 200 with the order_id and a status of PAYMENT_CONFIRMED
- *
- * Production hook-up will replace this with the real Africa's Talking webhook
- * receiver — same response contract, different signature verification.
+ * Phase 1 plan reference: 02-phase1-backend-execution-plan.md M6-C3.
+ * The production requirement is explicit: the fake settlement path must not
+ * be reachable in production, because it can be mistaken for the verified
+ * payment pipeline.
  */
 
 export const config = { runtime: 'edge' };
@@ -63,7 +51,7 @@ function isProduction(): boolean {
 }
 
 function isSimulatorAuthorized(req: Request): boolean {
-  if (!isProduction()) return true;
+  if (isProduction()) return false;
   if (process.env.MPESA_SIMULATOR_ENABLED !== 'true') return false;
 
   const secret = process.env.MPESA_SIMULATOR_SECRET;
@@ -118,7 +106,7 @@ async function persistOrder(input: {
       activation_secret_hash: await hashActivationSecret(input.activationSecret),
       amount_expected: input.request.amount,
       currency: input.request.currency ?? 'KES',
-      status: 'PAYMENT_CONFIRMED',
+      status: 'PAYMENT_PENDING',
       confirmed_at: new Date().toISOString(),
     }),
   });
@@ -174,14 +162,14 @@ export default async function handler(req: Request): Promise<Response> {
   const response: SimulateResponse = {
     orderId,
     activationSecret,
-    status: 'PAYMENT_CONFIRMED',
+    status: 'PAYMENT_PENDING',
     amount: body.amount,
     currency: body.currency ?? 'KES',
     simulatedAt: new Date().toISOString(),
     persisted,
     note: persisted
-      ? 'Simulator persisted to Supabase payment_orders. Real M-Pesa webhook hook-up replaces this in production.'
-      : 'Simulator in stateless mode (SUPABASE_SERVICE_ROLE_KEY not set). The order_id is ephemeral.',
+      ? 'Simulator persisted to Supabase payment_orders as a non-confirmed dev record. Real M-Pesa webhook hook-up replaces this in production.'
+      : 'Simulator in stateless mode (SUPABASE_SERVICE_ROLE_KEY not set). The order_id is ephemeral and remains non-confirmed.',
   };
 
   return json(response, {
