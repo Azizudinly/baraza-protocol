@@ -3,8 +3,8 @@
  *
  * Two-step settlement matching the payment-order pattern:
  *
- *   pending   → submit via mintBrzaBatch → submitted (tx hash captured)
- *   submitted → confirmMintTransaction   → confirmed | failed | (still pending)
+ *   pending   → atomically claim → submit via mintBrzaBatch → submitted (tx hash captured)
+ *   submitted → confirmMintTransaction                     → confirmed | failed | (still pending)
  *
  * Once every allocation in a round is confirmed (no pending or submitted left),
  * the round advances from 'allocated' to 'settled'.
@@ -12,10 +12,10 @@
  * Auth: Vercel cron sends `Authorization: Bearer ${CRON_SECRET}`. Manual
  * triggers from admins can supply `X-Admin-Wallet`. Either path is honored.
  *
- * Key-gated: if BRZA_DISTRIBUTOR_SECRET / BRZA_ISSUER_PUBLIC_KEY / STELLAR_HORIZON_URL
- * is not configured, the cron returns `{ ok: false, reason: 'no_distributor' }`
- * without touching the DB. Allocations stay at 'pending' until the operator
- * configures the distributor account.
+ * Concurrency & Idempotency:
+ *   - Overlapping/concurrent cron invocations are protected via atomic Compare-and-Set:
+ *     Only the worker that successfully updates `settlement_status = 'pending'` → `'claiming'`
+ *     proceeds to submit to `mintBrzaBatch`. Duplicate mint submissions are prevented.
  */
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
@@ -29,12 +29,12 @@ import {
 
 export const config = { runtime: 'nodejs' };
 
-interface AllocationRow {
+export interface AllocationRow {
   id: string;
   round_id: string;
   recipient_wallet: string;
   brza_allocated: number;
-  settlement_status: 'pending' | 'submitted' | 'confirmed' | 'failed';
+  settlement_status: 'pending' | 'claiming' | 'submitted' | 'confirmed' | 'failed';
   settlement_tx: string | null;
 }
 
@@ -64,7 +64,7 @@ function getSupabase(): SupabaseClient | null {
   return createClient(url, key);
 }
 
-interface DistributorConfig {
+export interface DistributorConfig {
   distributorSecret: string;
   issuerPublicKey: string;
   horizonUrl: string;
@@ -87,15 +87,9 @@ function getDistributorConfig(): DistributorConfig | null {
 }
 
 /**
- * Step 1: scan pending allocations grouped by round, submit batches.
- *
- * Why batch per round and not protocol-wide:
- *   - Memos carry the round id; one round per tx makes ops triage clean.
- *   - Per-op failures in `mintBrzaBatch` return a `failedOpIndex` — if a
- *     batch is mixed-round, an `op_no_trust` on a single recipient blocks
- *     the whole round's settlement progress instead of isolating to one row.
+ * Step 1: scan pending allocations grouped by round, atomically claim them, and submit batches.
  */
-async function submitPendingBatches(
+export async function submitPendingBatches(
   supabase: SupabaseClient,
   config: DistributorConfig,
 ): Promise<{ submitted: number; failed: number; rounds: number }> {
@@ -123,20 +117,36 @@ async function submitPendingBatches(
 
   for (const [roundId, allocations] of byRound) {
     const batch = allocations.slice(0, STELLAR_MAX_OPS_PER_TX);
+    const batchIds = batch.map((row) => row.id);
+
+    // Atomically claim rows via Compare-and-Set: only claim rows still strictly 'pending'
+    const { data: claimed } = await supabase
+      .from('retro_allocations')
+      .update({ settlement_status: 'claiming' })
+      .in('id', batchIds)
+      .eq('settlement_status', 'pending')
+      .select('id, round_id, recipient_wallet, brza_allocated');
+
+    const claimedBatch = (claimed ?? []) as AllocationRow[];
+    if (claimedBatch.length === 0) {
+      // Another concurrent worker claimed this batch in the race window; safely skip
+      continue;
+    }
+
     const result = await mintBrzaBatch({
       distributorSecret: config.distributorSecret,
       issuerPublicKey: config.issuerPublicKey,
       horizonUrl: config.horizonUrl,
       network: config.network,
       memo: `retro:${roundId.slice(0, 22)}`,
-      entries: batch.map((row) => ({
+      entries: claimedBatch.map((row) => ({
         recipient: row.recipient_wallet,
         amount: String(row.brza_allocated),
       })),
     });
 
     if (result.ok) {
-      const ids = batch.map((row) => row.id);
+      const ids = claimedBatch.map((row) => row.id);
       await supabase
         .from('retro_allocations')
         .update({
@@ -144,31 +154,45 @@ async function submitPendingBatches(
           settlement_tx: result.txHash,
         })
         .in('id', ids);
-      submitted += batch.length;
+      submitted += claimedBatch.length;
       continue;
     }
 
     if (result.retriable) {
-      // Leave at 'pending' — cron picks up next tick. No-op.
+      // Revert claimed rows back to 'pending' so next cron tick can retry
+      const ids = claimedBatch.map((row) => row.id);
+      await supabase
+        .from('retro_allocations')
+        .update({ settlement_status: 'pending' })
+        .in('id', ids);
       continue;
     }
 
-    // Terminal failure. If we have a failedOpIndex, isolate that one row.
-    if (typeof result.failedOpIndex === 'number' && result.failedOpIndex < batch.length) {
-      const culprit = batch[result.failedOpIndex];
+    // Terminal failure. If we have a failedOpIndex, isolate that one row and revert the rest
+    if (typeof result.failedOpIndex === 'number' && result.failedOpIndex < claimedBatch.length) {
+      const culprit = claimedBatch[result.failedOpIndex];
       await supabase
         .from('retro_allocations')
         .update({ settlement_status: 'failed' })
         .eq('id', culprit.id);
       failed += 1;
+
+      // Revert other un-failed rows in this batch to pending
+      const otherIds = claimedBatch.filter((r) => r.id !== culprit.id).map((r) => r.id);
+      if (otherIds.length > 0) {
+        await supabase
+          .from('retro_allocations')
+          .update({ settlement_status: 'pending' })
+          .in('id', otherIds);
+      }
     } else {
-      // No index — mark the whole batch failed so it stops blocking the round.
-      const ids = batch.map((row) => row.id);
+      // Mark entire claimed batch failed
+      const ids = claimedBatch.map((row) => row.id);
       await supabase
         .from('retro_allocations')
         .update({ settlement_status: 'failed' })
         .in('id', ids);
-      failed += batch.length;
+      failed += claimedBatch.length;
     }
   }
 
@@ -179,7 +203,7 @@ async function submitPendingBatches(
  * Step 2: verify submitted allocations on Horizon. Confirmed → 'confirmed';
  * Horizon-revert → 'failed'; still propagating → leave at 'submitted'.
  */
-async function confirmSubmittedAllocations(
+export async function confirmSubmittedAllocations(
   supabase: SupabaseClient,
   config: DistributorConfig,
 ): Promise<{ confirmed: number; failed: number; pending: number }> {
@@ -195,8 +219,6 @@ async function confirmSubmittedAllocations(
     return { confirmed: 0, failed: 0, pending: 0 };
   }
 
-  // Group by tx hash — submissions are batched, so 100 rows can share one tx.
-  // Confirming once per hash is enough; we update all rows that share the hash.
   const byTx = new Map<string, AllocationRow[]>();
   for (const row of rows) {
     if (!row.settlement_tx) continue;
@@ -227,7 +249,6 @@ async function confirmSubmittedAllocations(
         .in('id', ids);
       failed += group.length;
     } else {
-      // pending — leave as-is, cron picks up next tick
       pendingCount += group.length;
     }
   }
@@ -239,7 +260,7 @@ async function confirmSubmittedAllocations(
  * Step 3: advance rounds where every allocation is in a terminal state
  * (confirmed or failed) from 'allocated' to 'settled'.
  */
-async function settleCompletedRounds(supabase: SupabaseClient): Promise<number> {
+export async function settleCompletedRounds(supabase: SupabaseClient): Promise<number> {
   const { data: rounds } = await supabase
     .from('retro_rounds')
     .select('id')
@@ -254,7 +275,7 @@ async function settleCompletedRounds(supabase: SupabaseClient): Promise<number> 
       .from('retro_allocations')
       .select('id', { count: 'exact', head: true })
       .eq('round_id', r.id)
-      .in('settlement_status', ['pending', 'submitted']);
+      .in('settlement_status', ['pending', 'claiming', 'submitted']);
     if ((outstanding ?? 0) === 0) {
       await supabase
         .from('retro_rounds')
