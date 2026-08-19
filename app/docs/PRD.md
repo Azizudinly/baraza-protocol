@@ -470,7 +470,7 @@ Private identifiers must remain off-chain.
 
 Option A: External blockchain wallet
 
-- User connects Phantom, Solflare, Backpack, or another supported wallet.
+- User connects Phantom, Solflare, Coinbase Wallet, or another supported wallet.
 - Best for crypto-native users.
 - User signs directly.
 - Baraza does not custody assets.

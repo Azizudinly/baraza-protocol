@@ -64,7 +64,7 @@ export const CHAINS: Record<Chain, ChainMeta> = {
     railType: 'Primary rail',
     accountLabel: 'Solana account',
     suggestedWallet: 'Phantom',
-    walletExamples: 'Phantom, Solflare, or Backpack',
+    walletExamples: 'Phantom, Solflare, or Coinbase Wallet',
     accountCta: 'Connect Solana account with Phantom',
     testnet: {
       label: 'Solana Devnet',

@@ -48,9 +48,7 @@ Stellar launches first. Never treat EVM or Solana as launch blockers.
 ## Architecture rules — never break
 
 - All business logic lives in `app/src/lib/` — components → hooks → lib. Never import lib directly in components.
-- Chain adapters (`app/src/lib/adapters/`) are the single entry point for all chain interactions.
-- Wallet support: **Phantom, Solflare, Coinbase Wallet only** — do not add others.
-- Supabase is optional everywhere — every route falls back gracefully without env vars.
+- Wallet support: **Privy** is the primary account/invisible-wallet layer for phone/non-crypto onboarding (`app/src/lib/phoneAuth.ts`). Direct connect is secondary via registered adapters in `app/src/components/WalletProviders.tsx` (**Phantom, Solflare, Coinbase Wallet only**). Do not list or promote wallets without registered adapter packages.
 - `intentToken` is required for Stellar mainnet verification — legacy fields dev-only.
 - Activation secret is client-side only from order creation to membership activation.
 - BRZA ≠ XLM — never conflate the token with the payment rail.
