@@ -107,7 +107,6 @@ async function persistOrder(input: {
       amount_expected: input.request.amount,
       currency: input.request.currency ?? 'KES',
       status: 'PAYMENT_PENDING',
-      confirmed_at: new Date().toISOString(),
     }),
   });
 
