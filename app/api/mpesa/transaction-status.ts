@@ -2,11 +2,54 @@ export const config = { runtime: 'nodejs' };
 
 import { requestTransactionStatusQuery } from '../../../packages/integrations/src/daraja';
 
+interface PaymentOrderRow {
+  order_id: string;
+  status: string;
+}
+
+function supabaseHeaders(serviceKey: string): HeadersInit {
+  return {
+    apikey: serviceKey,
+    Authorization: `Bearer ${serviceKey}`,
+    'content-type': 'application/json',
+  };
+}
+
 function json(body: unknown, init?: ResponseInit): Response {
   return new Response(JSON.stringify(body), {
     ...init,
     headers: { 'content-type': 'application/json', ...(init?.headers ?? {}) },
   });
+}
+
+async function findOrderByReference(
+  url: string,
+  serviceKey: string,
+  transactionId: string,
+): Promise<PaymentOrderRow | null> {
+  const res = await fetch(
+    `${url}/rest/v1/payment_orders?provider_reference=eq.${encodeURIComponent(transactionId)}&select=order_id,status&limit=1`,
+    { headers: supabaseHeaders(serviceKey) },
+  );
+  if (!res.ok) throw new Error('status_query_lookup_failed');
+  const rows = (await res.json().catch(() => [])) as PaymentOrderRow[];
+  return rows[0] ?? null;
+}
+
+async function setOrderStatusQuerySent(
+  url: string,
+  serviceKey: string,
+  orderId: string,
+): Promise<void> {
+  const res = await fetch(
+    `${url}/rest/v1/payment_orders?order_id=eq.${encodeURIComponent(orderId)}`,
+    {
+      method: 'PATCH',
+      headers: supabaseHeaders(serviceKey),
+      body: JSON.stringify({ status: 'STATUS_QUERY_SENT' }),
+    },
+  );
+  if (!res.ok) throw new Error('status_query_persist_failed');
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -29,19 +72,35 @@ export default async function handler(req: Request): Promise<Response> {
       sandbox: body.sandbox ?? false,
     });
 
+    const supabaseUrl = process.env.SUPABASE_URL?.replace(/\/$/, '');
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl || !serviceKey) {
+      return json({ ok: false, error: 'supabase_not_configured' }, { status: 503 });
+    }
+
+    const order = await findOrderByReference(supabaseUrl, serviceKey, transactionId);
+    if (!order) {
+      return json({ ok: false, error: 'payment_order_not_found' }, { status: 404 });
+    }
+
+    const alreadyInFlight = order.status === 'STATUS_QUERY_SENT';
+    const alreadySubmitted = order.status === 'ATTESTATION_SUBMITTED';
+    if (!alreadyInFlight && !alreadySubmitted) {
+      await setOrderStatusQuerySent(supabaseUrl, serviceKey, order.order_id);
+    }
+
     return json({
       ok: true,
-      verified: true,
+      queryAccepted: true,
+      awaitingResult: true,
       mode: result.mode,
       transactionId: result.transactionId,
-      resultCode: result.resultCode,
-      resultDesc: result.resultDesc,
       conversationId: result.conversationId,
       originatorConversationId: result.originatorConversationId,
       acceptedAt: result.acceptedAt,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'transaction_status_query_failed';
-    return json({ ok: false, verified: false, error: message }, { status: 502 });
+    return json({ ok: false, queryAccepted: false, error: message }, { status: 502 });
   }
 }

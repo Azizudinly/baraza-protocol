@@ -155,6 +155,8 @@ describe('requestTransactionStatusQuery', () => {
         method: 'POST',
       }),
     );
+    expect(result.acceptedAt).toMatch(/\d{4}-\d{2}-\d{2}T/);
+    expect('verified' in (result as unknown as Record<string, unknown>)).toBe(false);
   });
 });
 
