@@ -123,52 +123,81 @@ async function submitPendingBatches(
 
   for (const [roundId, allocations] of byRound) {
     const batch = allocations.slice(0, STELLAR_MAX_OPS_PER_TX);
+    const candidateIds = batch.map((row) => row.id);
+
+    // Atomically claim the batch from 'pending' -> 'submitted' with a transient pending marker or CAS
+    // Only proceed with rows that were successfully transitioned by this worker
+    const { data: claimedRows, error: claimErr } = await supabase
+      .from('retro_allocations')
+      .update({ settlement_status: 'submitted', settlement_tx: 'in_flight' })
+      .in('id', candidateIds)
+      .eq('settlement_status', 'pending')
+      .select('id, round_id, recipient_wallet, brza_allocated, settlement_status, settlement_tx');
+
+    const claimed = (claimedRows ?? []) as AllocationRow[];
+    if (claimErr || claimed.length === 0) {
+      // Another concurrent worker claimed this batch; safely skip to prevent duplicate minting
+      continue;
+    }
+
     const result = await mintBrzaBatch({
       distributorSecret: config.distributorSecret,
       issuerPublicKey: config.issuerPublicKey,
       horizonUrl: config.horizonUrl,
       network: config.network,
       memo: `retro:${roundId.slice(0, 22)}`,
-      entries: batch.map((row) => ({
+      entries: claimed.map((row) => ({
         recipient: row.recipient_wallet,
         amount: String(row.brza_allocated),
       })),
     });
 
+    const claimedIds = claimed.map((row) => row.id);
+
     if (result.ok) {
-      const ids = batch.map((row) => row.id);
       await supabase
         .from('retro_allocations')
         .update({
           settlement_status: 'submitted',
           settlement_tx: result.txHash,
         })
-        .in('id', ids);
-      submitted += batch.length;
+        .in('id', claimedIds);
+      submitted += claimed.length;
       continue;
     }
 
     if (result.retriable) {
-      // Leave at 'pending' — cron picks up next tick. No-op.
+      // Revert from in_flight back to 'pending' so next cron tick can retry cleanly
+      await supabase
+        .from('retro_allocations')
+        .update({ settlement_status: 'pending', settlement_tx: null })
+        .in('id', claimedIds);
       continue;
     }
 
     // Terminal failure. If we have a failedOpIndex, isolate that one row.
-    if (typeof result.failedOpIndex === 'number' && result.failedOpIndex < batch.length) {
-      const culprit = batch[result.failedOpIndex];
+    if (typeof result.failedOpIndex === 'number' && result.failedOpIndex < claimed.length) {
+      const culprit = claimed[result.failedOpIndex];
       await supabase
         .from('retro_allocations')
-        .update({ settlement_status: 'failed' })
+        .update({ settlement_status: 'failed', settlement_tx: null })
         .eq('id', culprit.id);
+      
+      const remainingIds = claimedIds.filter((id) => id !== culprit.id);
+      if (remainingIds.length > 0) {
+        await supabase
+          .from('retro_allocations')
+          .update({ settlement_status: 'pending', settlement_tx: null })
+          .in('id', remainingIds);
+      }
       failed += 1;
     } else {
       // No index — mark the whole batch failed so it stops blocking the round.
-      const ids = batch.map((row) => row.id);
       await supabase
         .from('retro_allocations')
-        .update({ settlement_status: 'failed' })
-        .in('id', ids);
-      failed += batch.length;
+        .update({ settlement_status: 'failed', settlement_tx: null })
+        .in('id', claimedIds);
+      failed += claimed.length;
     }
   }
 
