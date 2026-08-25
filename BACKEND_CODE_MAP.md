@@ -235,10 +235,38 @@ flowchart LR
     - **Logic:** Validates OTP; creates persistent identity link in `identity_links` table mapping `user_id_hash` to `wallet_address`.
 12. **`app/api/membership/activate.ts` (Edge):**
     - **Logic:** Verifies order status is $\ge \text{INDEXER\_CONFIRMED}$; validates `hashActivationSecret`; inserts active membership into `memberships` table.
-13. **`app/api/communities/retro-rounds.ts` (Node.js):**
-    - **Logic:** Reads/creates retroactive funding rounds; enforces `X-Admin-Wallet` authorization against `ADMIN_WALLETS`.
-14. **`app/api/communities/retro-ballot.ts` (Node.js):**
-    - **Logic:** Casts quadratic votes across community projects; validates total voting credits budget.
+15. **`app/api/communities/retro-allocations.ts` (Node.js):**
+    - **Logic:** Computes retroactive weekly funding allocations using quadratic voting algorithm.
+16. **`app/api/communities/retro-settle.ts` (Node.js):**
+    - **Logic:** Settle and finalize retro round allocations with on-chain payout batching.
+17. **`app/api/cron/settle-retro-allocations.ts` (Node.js):**
+    - **Logic:** Scheduled background job checking closed retro rounds and triggering settlement.
+18. **`app/api/payment-orders/status.ts` (Edge):**
+    - **Logic:** Polling endpoint for client checkout flows querying order status by `orderId` or `intentTokenHash`.
+19. **`app/api/payment-orders/streak.ts` (Edge):**
+    - **Logic:** Calculates member monthly dues contribution streak for gamified reputation.
+20. **`app/api/payment-orders/streak-batch.ts` (Node.js):**
+    - **Logic:** Batch streak calculator for leaderboards and community dashboard roster views.
+21. **`app/api/payments/brza-membership.ts` (Edge):**
+    - **Logic:** Native BRZA token fee processor for crypto-native community activations.
+22. **`app/api/payments/reconcile-brza-membership.ts` (Node.js):**
+    - **Logic:** Reconciles pending BRZA token membership payments.
+23. **`app/api/ussd/index.ts` (Edge):**
+    - **Logic:** GSM USSD gateway endpoint handling Africa's Talking session callbacks and menus.
+24. **`app/api/agent/chat.ts` (Edge):**
+    - **Logic:** AI conversational guidance proxy interfacing with Anthropic Claude API for member onboarding.
+25. **`app/api/akili/filings.ts` (Node.js):**
+    - **Logic:** Akili legal & statutory filing assistant for cooperative and SACCO registration.
+26. **`app/api/mpesa/simulate.ts` (Edge):**
+    - **Logic:** Local dev & testing STK Push mock simulator for automated integration testing.
+
+### 3.2 Target Production SaaS Routes Surface (To Be Implemented)
+- **User & Profile:** `GET/PATCH /api/user/profile`, `GET /api/user/memberships`, `POST /api/user/avatar-upload`
+- **Push & Multi-Channel Messaging:** `POST /api/user/notifications/push-subscribe`, `GET/PATCH /api/user/notifications/preferences`, `POST /api/notifications/dispatch`
+- **Workspace & Collaboration:** `GET/POST/PATCH/DELETE /api/communities/[id]/roadmap`, `GET/POST /api/communities/[id]/suggestions`, `GET/POST /api/communities/[id]/bounties`
+- **Community Admin & Invites:** `GET/PATCH /api/communities/[id]/settings`, `POST /api/communities/[id]/invites`, `GET /api/communities/[id]/members`, `POST /api/communities/[id]/officers`
+- **Accounting & Compliance:** `GET /api/communities/[id]/statement`, `GET /api/user/receipt/[orderId]`, `GET /api/communities/[id]/audit-log`
+- **Health & Rate Limiting:** `GET /api/health/live`, `GET /api/health/ready`, `GET /api/health/metrics`
 
 ---
 

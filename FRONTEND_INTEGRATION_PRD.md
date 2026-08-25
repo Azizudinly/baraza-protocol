@@ -79,16 +79,42 @@ flowchart LR
   - Show approval threshold status (e.g., *"2 of 3 Officers Approved"*).
   - Provide *"Approve Payout"* button that initiates on-chain signature verification.
 
-### 3.6 Member Profile, Settings & Quality of Life
+### 3.6 Member Profile, Push Notifications & Identity Settings (`Profile.tsx`)
 - **Frontend Requirements:**
-  - View member contribution streak badge and verified tier badges.
-  - Edit display name, notification preferences (SMS vs. WhatsApp).
-  - Language toggle: English (`en`), Swahili (`sw`), Sheng (`sheng`).
-  - Export personal contribution history to CSV / downloadable PDF receipt.
+  - View member contribution streak badge, verified tier badges, and linked wallets/phones.
+  - Edit display name, bio, avatar upload, default currency, and country locale.
+  - Multi-lingual language toggle: English (`en`), Swahili (`sw`), Sheng (`sheng`).
+  - **Push Notification Center:** Subscribe to browser Web Push / mobile notifications; toggle granular preferences across SMS, WhatsApp, and Web Push for proposal votes, dues cycles, and multisig releases.
 - **Backend Contracts:**
   - `GET /api/user/profile` & `PATCH /api/user/profile`.
   - `GET /api/user/memberships`.
+  - `POST /api/user/notifications/push-subscribe`.
+  - `GET/PATCH /api/user/notifications/preferences`.
+  - `POST /api/user/avatar-upload`.
+
+### 3.7 Community Workspace: Roadmaps, Suggestion Box & Bounty Board
+- **Frontend Requirements:**
+  - **Community Roadmap (`CommunityRoadmap.tsx`):** View funded and upcoming group milestones with progress bars. Officers can add or update milestones.
+  - **Member Suggestion Box (`CommunitySuggestions.tsx`):** Bottom-up ideation feed where members submit ideas and upvote/downvote proposals before formal on-chain governance.
+  - **Micro-Bounty Board (`BountyBoard.tsx`):** Community tasks funded by treasury allocations; members apply, submit proof of work, and track reward status.
+- **Backend Contracts:**
+  - `GET/POST/PATCH/DELETE /api/communities/[id]/roadmap`.
+  - `GET/POST /api/communities/[id]/suggestions` & `POST /api/communities/[id]/suggestions/[suggestionId]/vote`.
+  - `GET/POST /api/communities/[id]/bounties`, `POST /api/bounties/[id]/apply`, `POST /api/bounties/[id]/submit`.
+
+### 3.8 Officer Administration: Member Directory, Invites, Statements & Disputes
+- **Frontend Requirements:**
+  - **Invite Link Generator:** Create trackable invitation links with custom expiration and usage limits for viral onboarding.
+  - **Member Roster Management:** Search and filter members by status (`active`, `overdue_dues`, `officer`), assign leadership titles, and export CSV.
+  - **Financial Statement & Tax Export:** Export official double-entry ledger summaries for date ranges in CSV and PDF.
+  - **Dispute Resolution Portal:** Review flagged payments (`MANUAL_REVIEW`) and submit manual verification proofs.
+- **Backend Contracts:**
+  - `POST /api/communities/[id]/invites`.
+  - `GET /api/communities/[id]/members` & `POST /api/communities/[id]/officers`.
+  - `GET /api/communities/[id]/statement`.
   - `GET /api/user/receipt/[orderId]`.
+  - `POST /api/payment-orders/[id]/dispute`.
+  - `GET /api/communities/[id]/audit-log`.
 
 ---
 
@@ -96,3 +122,4 @@ flowchart LR
 1. **Visual Styling:** Clean, premium dark mode aesthetic with vibrant African sunrise accents (`#f97316` / `#e11d48`).
 2. **Error Boundary Discipline:** Network errors must present localized, actionable Swahili/English recovery messages rather than raw API stack traces.
 3. **No Secrets in Frontend:** The client bundle must never reference or expose private service keys (`SUPABASE_SERVICE_ROLE_KEY`, `MPESA_CONSUMER_SECRET`, `STELLAR_INTENT_SECRET`). All privileged server interactions pass through `/api/*` endpoints.
+

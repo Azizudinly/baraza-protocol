@@ -1,3 +1,4 @@
+
 # Baraza Protocol — Exhaustive Backend Scope of Work (SOW)
 
 **Document Version:** 2.0 (Master Execution Release)  
@@ -166,30 +167,76 @@ Every task and subsystem in this document is rigorously evaluated against the go
 
 ## Section G: Standard Production SaaS & Quality-of-Life Endpoints
 
-### G.1 Member Profile, Locale & Preferences Endpoints
+### G.1 Member Profile, Preferences & Identity Continuity
 - **Classification:** `[PROPOSED]`
-- **Engineering Rationale:** Essential for production web platforms to manage user preferences, preferred language (English/Swahili/Sheng), and notification routing without exposing raw on-chain data.
+- **Engineering Rationale:** Essential for production SaaS account management, allowing members to manage profiles, language preferences (English/Swahili/Sheng), and notification routing without exposing raw on-chain data. Replaces scattered localStorage stubs in `Profile.tsx` and `phoneAuth.ts`.
+- **Target Files (from Code Map):** `app/api/user/profile.ts`, `app/api/user/memberships.ts`, `supabase/migrations/`
 - **Pending Scope of Work:**
-  1. `GET /api/user/profile` — Fetch user account info, verified phone status, and notification channels.
-  2. `PATCH /api/user/profile` — Update display name, avatar URL, language preference (`en` | `sw` | `sheng`), and default channel (`sms` | `whatsapp`).
-  3. `GET /api/user/memberships` — Return all active community memberships, roles, dues status, and voting power for the logged-in user.
+  1. `GET /api/user/profile` — Fetch current user profile, linked wallets, verified phone status, and notification preferences.
+  2. `PATCH /api/user/profile` — Update display name, avatar URL, bio, preferred locale (`en` | `sw` | `sheng`), country (`KE`, `UG`, `TZ`, `RW`), and default currency.
+  3. `GET /api/user/memberships` — Return all active community memberships, officer roles, dues status, and voting power for the authenticated user.
+  4. `POST /api/user/avatar-upload` — Generate presigned upload URL for member avatars in Supabase Storage (`avatars` bucket).
 
-### G.2 Accounting Statement & Financial Export Endpoints
+### G.2 Push Notifications & Multi-Channel Messaging Subscriptions
 - **Classification:** `[PROPOSED]`
-- **Engineering Rationale:** Group treasurers, SACCO committee members, and auditors require downloadable statements for offline statutory and tax accounting.
+- **Engineering Rationale:** Community governance, voting deadlines, and dues collection rely heavily on timely member nudges. Members in emerging markets switch between Web Push, SMS, and WhatsApp based on connectivity.
+- **Target Files (from Code Map):** `app/api/user/notifications/`, `app/src/lib/notifications/`
 - **Pending Scope of Work:**
-  1. `GET /api/communities/[id]/statement` — Export community double-entry ledger entries to CSV or PDF.
-  2. `GET /api/user/receipt/[orderId]` — Download official PDF contribution receipt.
+  1. `POST /api/user/notifications/push-subscribe` — Register Web Push / FCM browser push subscription tokens for real-time mobile and desktop alerts.
+  2. `GET/PATCH /api/user/notifications/preferences` — Granular channel toggle matrix (`sms`, `whatsapp`, `push`, `email`) for:
+     - New proposal created in joined community
+     - Voting deadline reminder (24h before proposal closes)
+     - Dues cycle payment reminder (3 days before monthly due date)
+     - Dues payment confirmation & on-chain receipt notification
+     - Treasury multisig payout signature requests for elected officers
+  3. `POST /api/notifications/dispatch` — Internal queue worker delivering scheduled alerts via Africa's Talking SMS, Evolution WhatsApp API, and Web Push.
 
-### G.3 Production Health, Readiness & Observability Endpoints
+### G.3 Community Workspace Features (Roadmaps, Suggestions & Bounties)
 - **Classification:** `[PROPOSED]`
-- **Engineering Rationale:** Critical for uptime monitoring (Better Uptime, Datadog) and CI/CD deployment checks.
+- **Engineering Rationale:** Replaces frontend `localStorage` mock implementations in `CommunityRoadmap.tsx`, `CommunitySuggestions.tsx`, and `BountyBoard.tsx` with durable, multi-user database persistence.
+- **Target Files (from Code Map):** `app/api/communities/[id]/`, `supabase/migrations/`
 - **Pending Scope of Work:**
-  1. `GET /api/health/live` — Liveness probe returning HTTP 200 `{ status: "ok" }`.
-  2. `GET /api/health/ready` — Deep readiness probe validating database connectivity, Horizon RPC responsiveness, and payment gateway health.
-  3. `GET /api/health/metrics` — Metrics probe returning queue depth and attestation latency.
+  1. `GET/POST /api/communities/[id]/roadmap` — List and create community roadmap milestones (`title`, `description`, `target_date`, `status`, `funding_goal_kes`).
+  2. `PATCH/DELETE /api/communities/[id]/roadmap/[milestoneId]` — Update or delete milestone (Admin/Officer only).
+  3. `GET/POST /api/communities/[id]/suggestions` — Member suggestion box for bottom-up community proposals and feedback.
+  4. `POST /api/communities/[id]/suggestions/[suggestionId]/vote` — Upvote/downvote suggestions.
+  5. `GET/POST /api/communities/[id]/bounties` — Community task and micro-bounty board management.
+  6. `POST /api/bounties/[id]/apply` & `POST /api/bounties/[id]/submit` — Member application and work submission for community bounties.
 
-### G.4 Token-Bucket Rate Limiting Middleware
+### G.4 Community Management, Invitations & Access Control
+- **Classification:** `[PROPOSED]`
+- **Engineering Rationale:** Group founders and admins need tools to manage membership rosters, track invite links, and assign leadership roles.
+- **Target Files (from Code Map):** `app/api/communities/[id]/`
+- **Pending Scope of Work:**
+  1. `GET/PATCH /api/communities/[id]/settings` — Update community metadata (description, logo, rules, privacy mode: `public` vs `private_invite_only`).
+  2. `POST /api/communities/[id]/invites` — Generate trackable member referral/invite link with expiration and max uses.
+  3. `GET /api/communities/[id]/members` — Search and filter member roster (by `active`, `overdue_dues`, `role`), with pagination and CSV export.
+  4. `POST /api/communities/[id]/officers` — Assign and revoke group officer roles (Chairperson, Treasurer, Secretary).
+
+### G.5 Accounting Statements, Tax Receipts & Financial Exports
+- **Classification:** `[PROPOSED]`
+- **Engineering Rationale:** Group treasurers, SACCO committee members, and auditors require downloadable accounting statements for local tax and statutory record-keeping.
+- **Pending Scope of Work:**
+  1. `GET /api/communities/[id]/statement` — Export community double-entry ledger entries to CSV or PDF for custom date ranges.
+  2. `GET /api/user/receipt/[orderId]` — Generate downloadable PDF payment receipt for member dues contributions.
+
+### G.6 Disputes, Refund Requests & Audit Logs
+- **Classification:** `[PROPOSED]`
+- **Engineering Rationale:** Provides operational resolution paths for payment mismatches (`payment_orders.status = 'MANUAL_REVIEW'`) and immutable regulatory audit trails.
+- **Pending Scope of Work:**
+  1. `POST /api/payment-orders/[id]/dispute` — Member submits dispute reason / proof for stalled or mismatched payments.
+  2. `GET /api/communities/[id]/audit-log` — Tamper-evident, append-only audit trail of officer and admin actions (mandated for SASRA/ODPC compliance).
+  3. `POST /api/support/ticket` — Submit support ticket with automated Akili AI diagnostics and human escalation.
+
+### G.7 Health, Readiness & Observability Endpoints
+- **Classification:** `[PROPOSED]`
+- **Engineering Rationale:** Mandatory for production uptime monitoring (Better Uptime, Datadog, Vercel synthetic checks) and zero-downtime deployments.
+- **Pending Scope of Work:**
+  1. `GET /api/health/live` — Lightweight liveness probe returning HTTP 200 `{ status: "ok" }`.
+  2. `GET /api/health/ready` — Deep readiness probe validating database connectivity, Horizon RPC responsiveness, and partner payment gateway health.
+  3. `GET /api/health/metrics` — Metrics probe returning queue depth, attestation latency, and error counts.
+
+### G.8 Token-Bucket Rate Limiting & Abuse Prevention Middleware
 - **Classification:** `[PROPOSED]`
 - **Engineering Rationale:** Protects paid third-party APIs (Privy, Anthropic, Africa's Talking) and serverless compute from abuse.
 - **Pending Scope of Work:**
@@ -227,7 +274,9 @@ Every task and subsystem in this document is rigorously evaluated against the go
 │ **P2**  │ SASRA Sacco License Verification Gate    │ `[SAD-ALIGNED]`│ 20% Complete  │ Sprint 1 (Days 3-7)│
 │ **P3**  │ Soroban Mainnet Deploy + 2-of-N Attest   │ `[SAD-ALIGNED]`│ 90% Complete  │ Sprint 2 (Days 8-12│
 │ **P4**  │ Double-Entry Ledger + Cron Reconciler    │ `[SAD-ALIGNED]`│ 60% Complete  │ Sprint 2 (Days 10-14│
-│ **P5**  │ Standard SaaS Endpoints (Profile/Health) │ `[PROPOSED]`   │ 30% Complete  │ Sprint 3 (Days 15-18│
-│ **P6**  │ Event Indexer + KMS HSM Custody          │ `[PROPOSED]`   │ 10% Complete  │ Sprint 3 (Days 18-21│
+│ **P5**  │ Core SaaS: Profile, Push, Settings       │ `[PROPOSED]`   │ 30% Complete  │ Sprint 3 (Days 15-18│
+│ **P6**  │ Workspace: Roadmap, Suggestions, Bounties│ `[PROPOSED]`   │ 20% Complete  │ Sprint 3 (Days 17-20│
+│ **P7**  │ Health, Observability, Rate Limiting     │ `[PROPOSED]`   │ 25% Complete  │ Sprint 4 (Days 20-22│
+│ **P8**  │ Event Indexer + KMS HSM Key Custody      │ `[PROPOSED]`   │ 10% Complete  │ Sprint 4 (Days 22-25│
 └─────────┴──────────────────────────────────────────┴────────────────┴───────────────┴──────────────────┘
 ```
