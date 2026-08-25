@@ -1,29 +1,92 @@
-# dependencies
-node_modules/
+# ─────────────────────────────────────────────────────────────
+# Baraza Protocol — Production .gitignore (S&P 500 Cleanliness Standard)
+# ─────────────────────────────────────────────────────────────
 
-# builds
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build Artifacts & Binaries
 target/
 .next/
 dist/
+dist-ssr/
 build/
 *.wasm
+*.tsbuildinfo
 
-# env & secrets
+# Environment Variables & Secrets
 .env
 .env.*
+.env*.local
 !.env.example
 !**/.env.example
 !**/.env.local.example
+
+# Cryptographic Keys & Certificates
 *.pem
 *.key
+*.pkcs12
+*.pfx
+*.p12
+*.crt
+*.csr
+*.der
+id_rsa*
+id_ed25519*
+id_ecdsa*
+secp256k1*
+credentials.json
+service-account*.json
 
-# archives
+# Logs & Diagnostics
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+vite-dev.*.log
+.codex-vite.*.log
+
+# Caches & Serverless Runtime Metadata
+.cache/
+.turbo/
+.vercel
+.nyc_output/
+coverage/
+
+# OS Metadata
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE & Editor Metadata
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.sw?
+*.swo
+*.swn
+*.bak
+*.sublime-project
+*.sublime-workspace
+.gstack/
+
+# Temporary Archives & Crash Dumps
 *.zip
 *.tar.gz
+*.tgz
+*.rar
+*.7z
+*.dump
+*.stackdump
+core
+core.*
 
-# os / editor
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/
-.gstack/
+# Render & Script Outputs
+scripts/higgsfield/output/
