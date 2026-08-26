@@ -185,7 +185,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   // Resolve base dues configuration
   const feeType = community?.fee_type || 'one_time';
-  let baseAmountMinor = 0;
+  let baseAmountMinor: number;
 
   if (feeType === 'free') {
     baseAmountMinor = 0;

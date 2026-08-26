@@ -5,7 +5,7 @@ import { calculateDynamicFee } from '../payments/feeEngine';
 
 // Import all API route handlers
 import createPaymentIntentHandler from '../../../api/stellar/create-payment-intent';
-import verifyPaymentHandler from '../../../api/stellar/verify-payment';
+import { POST as verifyPaymentHandler } from '../../../api/stellar/verify-payment';
 import activateMembershipHandler from '../../../api/membership/activate';
 import paystackPaymentHandler from '../../../api/payments/paystack';
 import paystackWebhookHandler from '../../../api/webhooks/paystack';
@@ -16,7 +16,7 @@ import mpesaSimulateHandler from '../../../api/mpesa/simulate';
 import mpesaTransactionStatusHandler from '../../../api/mpesa/transaction-status';
 import mpesaStatusResultHandler from '../../../api/mpesa/status-result';
 import mpesaStatusTimeoutHandler from '../../../api/mpesa/status-timeout';
-import communitiesHandler from '../../../api/communities/index';
+import { POST as communitiesHandler } from '../../../api/communities/index';
 import retroAllocationsHandler from '../../../api/communities/retro-allocations';
 import retroBallotHandler from '../../../api/communities/retro-ballot';
 import retroRoundsHandler from '../../../api/communities/retro-rounds';
@@ -29,8 +29,8 @@ import streakBatchHandler from '../../../api/payment-orders/streak-batch';
 import ussdHandler from '../../../api/ussd/index';
 import africastalkingWebhookHandler from '../../../api/webhooks/africastalking';
 import akiliFilingsHandler from '../../../api/akili/filings';
-import promoteOrdersCronHandler from '../../../api/cron/promote-orders';
-import settleRetroAllocationsCronHandler from '../../../api/cron/settle-retro-allocations';
+import { GET as promoteOrdersCronHandler } from '../../../api/cron/promote-orders';
+import { GET as settleRetroAllocationsCronHandler } from '../../../api/cron/settle-retro-allocations';
 
 type ApiHandler = (req: Request) => Promise<Response>;
 
@@ -680,7 +680,7 @@ describe('Database-Integrated Real HTTP Stress & Correctness Suite', () => {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             communityId: 'amani_sacco_uuid_1001',
-            amountXlm: 1,
+            amountXlm: 1 + (i % 5),
           }),
         }),
       );
