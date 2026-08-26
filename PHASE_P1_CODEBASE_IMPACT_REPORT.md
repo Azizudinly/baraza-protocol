@@ -1,17 +1,32 @@
-# Baraza Protocol — Phase P1 Detailed Codebase Impact & File-by-File Proof Report
+# Baraza Protocol — Phase P1 Detailed Codebase Impact, Proof & Verification Blueprint
 
-**Document Version:** 1.0 (Canonical Implementation Impact Analysis)  
+**Document Version:** 2.0 (Canonical Implementation Impact & Multi-Tier Verification Blueprint)  
 **Lead System Architect & Backend Engineer:** Simon Wandera  
 **Date:** August 26, 2026  
-**Governing Documents & Baseline:**
+**Governing Documents & Source Hierarchy:**
 - `BACKEND_SCOPE_OF_WORK.md` (v4.0 Canonical Blueprint)
 - `BACKEND_CODE_MAP.md` (Repository Structural Map)
-- `Baraza-Launch-Direction-Memo-3.pdf` (BuildAfrica DAO Memo 3)
-- `Baraza Protocol  SAD.md` (Software Architecture Document v1.0)
+- `Baraza-Launch-Direction-Memo-3.pdf` (BuildAfrica DAO Memo 3, Aug 25, 2026)
+- `DevOps Request: Live Validation & Infrastructure Requirements for Baraza Protocol.pdf` (Aug 23, 2026)
+- `Baraza Protocol  SAD.md` (Software Architecture Document v1.0, Simon Wandera)
+- `Baraza-Protocol-Testing-Strategy.md` (Engineering Standards)
+- `Baraza-Protocol-Phase1-Specification.md` (Main-1 through Main-5)
 
 ---
 
-## Executive Summary of Codebase Changes
+## Table of Contents
+1. [Executive Summary of Codebase Changes](#1-executive-summary-of-codebase-changes)
+2. [Detailed File-by-File Impact & Proof Analysis (12 Target Files)](#2-detailed-file-by-file-impact--proof-analysis-12-target-files)
+3. [Comprehensive Testing & Correctness Architecture](#3-comprehensive-testing--correctness-architecture)
+   - [3.1 Code-Level Automated Verification (Unit, Mock & Integration Suites)](#31-code-level-automated-verification-unit-mock--integration-suites)
+   - [3.2 Mathematical Invariant & Property-Based Ledger Tests](#32-mathematical-invariant--property-based-ledger-tests)
+   - [3.3 Physical & Handset End-to-End Live Validation (SAD & DevOps Specs)](#33-physical--handset-end-to-end-live-validation-sad--devops-specs)
+   - [3.4 Security & Adversarial Attack Simulation Testing](#34-security--adversarial-attack-simulation-testing)
+4. [Verification Acceptance Evidence Ledger (MSA Clause 8 Aligned)](#4-verification-acceptance-evidence-ledger-msa-clause-8-aligned)
+
+---
+
+## 1. Executive Summary of Codebase Changes
 
 To implement **Phase P1 (Dynamic Activation Fee Engine + Multi-Rail Ingress: Kotani, Daraja, Paystack, Minisend + Double-Entry Split + SASRA Gate Preparation)**, a total of **12 specific files across 5 architectural layers** in the repository will be created or modified:
 
@@ -38,7 +53,7 @@ To implement **Phase P1 (Dynamic Activation Fee Engine + Multi-Rail Ingress: Kot
 
 ---
 
-## Detailed File-by-File Impact & Proof Analysis
+## 2. Detailed File-by-File Impact & Proof Analysis (12 Target Files)
 
 ### 1. Database Schema Layer: `supabase/migrations/024_communities_dynamic_activation_fee.sql`
 * **File Action:** **[NEW]** (Sequential migration following `023_payment_orders_add_status_query_states.sql`).
@@ -278,7 +293,157 @@ To implement **Phase P1 (Dynamic Activation Fee Engine + Multi-Rail Ingress: Kot
 
 ---
 
-## Preservation of Existing Test Suite & Regression Verification
+## 3. Comprehensive Testing & Correctness Architecture
 
-* **Baseline Integrity:** All 50 test files and 532 existing unit/integration tests in the repository will continue passing green without regressions.
-* **Verification Command:** `npm test` will be executed immediately after modifications to validate 100% test coverage.
+To prove 100% mathematical, operational, and regulatory correctness, Phase P1 executes a **Four-Tier Verification Suite** spanning code automation, property-based invariants, physical device testing, and adversarial simulations:
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                               FOUR-TIER CORRECTNESS & TESTING ARCHITECTURE                                     │
+├───────┬─────────────────────────┬────────────────────────────────────────────┬─────────────────────────────────┤
+│ Tier  │ Testing Category        │ Execution Methodology                      │ Target Invariant & Citation     │
+├───────┼─────────────────────────┼────────────────────────────────────────────┼─────────────────────────────────┤
+│ **1** │ Automated Code Suites   │ Unit, Mock API & Contract Drift Suites     │ SAD §1.1, Testing Strategy §3   │
+│ **2** │ Property-Based Invariant│ Mathematical Balance Conservation Checks   │ SAD §3.5 Class A (Debit=Credit) │
+│ **3** │ Physical Device STK     │ Real Phone SIM & STK Prompt Validation     │ DevOps Request PDF §3 (6 Steps) │
+│ **4** │ Adversarial Simulation  │ Webhook Forgery & Race Mutex Attacks       │ Red Team Finding #1, Invariant I2b│
+└───────┴─────────────────────────┴────────────────────────────────────────────┴─────────────────────────────────┘
+```
+
+---
+
+### 3.1 Code-Level Automated Verification (Unit, Mock & Integration Suites)
+
+* **Source Authority:** `Baraza-Protocol-Testing-Strategy.md` & `Baraza-Protocol-Phase1-Specification.md`.
+* **Execution Command:** `npm test` (Runs Vitest test runner across 50+ test suites).
+
+#### Exact Automated Test Suites:
+1. **Dynamic Fee Engine Suite (`app/src/lib/__tests__/feeEngine.test.ts`):**
+   * *Zero-Fee Boundary:* Confirms that $A_{\text{base}} = 0$ yields `isFree: true` and 0 fee.
+   * *Standard Dues Calculation:* Asserts $A_{\text{base}} = \text{KES } 500$ (50,000 cents) results in:
+     $$\text{PlatformFee} = 1,000 \text{ cents} \quad (\text{KES } 10.00)$$
+     $$\text{CarrierFee} = 250 \text{ cents} \quad (\text{KES } 2.50)$$
+     $$\text{TotalExpected} = 51,250 \text{ cents} \quad (\text{KES } 512.50)$$
+   * *Carrier Ceiling Cap:* Asserts that for large contributions (e.g. KES 100,000), carrier fee strictly clamps to KES 200 (20,000 cents).
+   * *Integer Boundary Check:* Validates that no fractional cents or IEEE-754 floating-point decimals ever leak into database payloads (`Number.isInteger(result) === true`).
+
+2. **HMAC Payment Intent Token Verification (`app/src/lib/__tests__/paymentIntent.test.ts`):**
+   * *Tamper Resistance:* Modifying a single character in the `intentToken` payload or signature must cause `verify-payment.ts` to reject with HTTP 401.
+   * *Expiry Gate:* An expired timestamp ($>30\text{ minutes}$) must reject intent validation.
+
+3. **Multi-Provider Webhook Signature Verification (`app/src/lib/__tests__/webhooks.test.ts`):**
+   * *Kotani Signature:* Validates HMAC-SHA256 signature verification over raw body using `KOTANI_WEBHOOK_SECRET`.
+   * *Paystack Signature:* Validates HMAC-SHA512 `x-paystack-signature` matching using `PAYSTACK_SECRET_KEY`.
+   * *Forged Payloads:* Confirms that payloads with missing or invalid signatures reject immediately with HTTP 401 without touching the database.
+
+4. **100% Green Baseline Integrity:**
+   * Validates all 50 existing test files and 532 existing unit tests in the repository continue passing green with zero regressions.
+
+---
+
+### 3.2 Mathematical Invariant & Property-Based Ledger Tests
+
+* **Source Authority:** `Baraza Protocol  SAD.md` (§3.5 Class A Mandatory Elements).
+* **Governing Invariant:**
+  $$\forall \text{ settled payments } p \in \text{ledger\_entries}: \quad \sum \text{Debits} \equiv \sum \text{Credits}$$
+
+#### Automated Ledger Property Tests:
+1. **Double-Entry Split Conservation Suite:**
+   * Simulates 1,000 randomized payment amounts between KES 10 and KES 250,000.
+   * For every transaction, asserts that the atomic split execution creates:
+     - 1 Member Credit ($A_{\text{base}}$)
+     - 1 Treasury Vault Debit ($A_{\text{base}}$)
+     - 1 Protocol Revenue Debit ($\text{PlatformFee}$)
+     - 1 Carrier Settlement Debit ($\text{CarrierCost}$)
+   * Executes database assertion:
+     ```sql
+     SELECT community_id, SUM(debit_amount) - SUM(credit_amount) AS imbalance
+     FROM ledger_entries
+     GROUP BY community_id
+     HAVING SUM(debit_amount) <> SUM(credit_amount);
+     -- MUST RETURN ZERO ROWS
+     ```
+
+---
+
+### 3.3 Physical & Handset End-to-End Live Validation (SAD & DevOps Specs)
+
+* **Source Authority:** `DevOps Request: Live Validation & Infrastructure Requirements for Baraza Protocol.pdf` (§3) and `Baraza-Protocol-Phase1-Specification.md` (Main-4 Task 4.3).
+
+To validate real-world carrier network behavior that cannot be simulated in local unit tests, the following **6-step physical test protocol** must be executed on a real handset with an active Kenyan SIM card:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Founder as Group Founder
+    actor Member as Physical Handset User (SIM)
+    participant WebUI as Baraza Web Client (JoinDao)
+    participant API as Baraza Serverless Edge API
+    participant Partner as Mobile Money Partner (Kotani/Daraja)
+    participant Carrier as Safaricom M-Pesa Network
+    participant Chain as Stellar Soroban Ledger
+
+    Founder->>WebUI: Creates Community (Sets dynamic fee: KES 150)
+    Member->>WebUI: Enters phone (2547XXXXXXXX)
+    WebUI->>Member: Shows pre-transaction fee disclosure (KES 150 + KES 3.00 = KES 153.00)
+    Member->>WebUI: Clicks "Pay & Activate"
+    WebUI->>API: POST /api/stellar/create-payment-intent
+    API->>Partner: Initiates STK Push prompt
+    Partner->>Carrier: USSD STK Push dispatch
+    Carrier->>Member: Displays physical SIM prompt: "Do you want to pay KES 153 to Baraza?"
+    Member->>Carrier: Enters 4-digit M-Pesa PIN
+    Carrier-->>Partner: Carrier payment confirmation
+    Partner-->>API: Webhook callback (UNTRUSTED per Invariant I2b)
+    API->>Partner: Independent Transaction Status Query
+    Partner-->>API: Verified status confirmation
+    API->>Chain: Invokes payment_attestation.attest() via Cloud KMS
+    Chain-->>API: Transaction hash settled on-chain
+    API->>WebUI: Transitions order to INDEXER_CONFIRMED
+    WebUI->>Member: Displays "Membership Active" & unlocks community dashboard
+```
+
+#### Physical Handset Test Checklist:
+1. **Step 1 (Physical STK Push Prompt):**
+   * *Action:* Enter test phone number `254708374149` (Safaricom Sandbox) or physical live Safaricom SIM on `JoinDao.tsx`.
+   * *Physical Verification:* An authentic M-Pesa SIM popup must appear on the physical screen within **$<10\text{ seconds}$** with the exact total expected amount.
+2. **Step 2 (PIN Entry & Carrier Response):**
+   * *Action:* User inputs PIN on physical phone.
+   * *Physical Verification:* User receives official carrier SMS receipt from Safaricom / M-Pesa containing the receipt code.
+3. **Step 3 (Zero-Trust Ingress & Status Query):**
+   * *Verification:* Inbound webhook triggers server-side independent Transaction Status Query (`POST /v1/query`). Order does **not** advance past `PROVIDER_CONFIRMED` until verified response returns.
+4. **Step 4 (On-Chain Minting & UI Unlock):**
+   * *Verification:* Upon verified callback, `payment_attestation` transaction settles on Stellar testnet/mainnet, and the browser automatically transitions to the member dashboard without requiring a manual page refresh.
+5. **Step 5 (Free Community Instant Activation):**
+   * *Action:* Join a community configured with `activation_fee_minor = 0` (`fee_type = 'free'`).
+   * *Verification:* Zero STK push is dispatched; button reads `"Join Free Community"`; membership is activated immediately in $<500\text{ms}$.
+
+---
+
+### 3.4 Security & Adversarial Attack Simulation Testing
+
+* **Source Authority:** Red Team Finding #1 (Webhook Forgery) & Finding #2 (Signer Compromise).
+
+#### Adversarial Test Scenarios:
+1. **Webhook Forgery Attack (Red Team Finding #1):**
+   * *Attack:* Attacker sends a forged HTTP POST to `/api/webhooks/kotani` with valid JSON body but fabricated signature.
+   * *Expected Defense:* Webhook handler rejects with HTTP 401. Order status in Supabase remains unchanged.
+2. **Double-Click / Multi-Provider Race Attack:**
+   * *Attack:* Two simultaneous webhooks hit `/api/webhooks/kotani` and `/api/webhooks/paystack` for the same `order_id`.
+   * *Expected Defense:* First webhook obtains row-level lock (`SELECT ... FOR UPDATE`), marks order `PROVIDER_CONFIRMED`. Second webhook detects non-pending state, creates a `suspense_duplicate_credit` record, and does **not** double-mint membership credentials.
+3. **Production Simulator Lockout:**
+   * *Attack:* Attacker calls `/api/mpesa/simulate` in production environment.
+   * *Expected Defense:* Endpoint throws HTTP 403 / 404 (`MPESA_SIMULATOR_ENABLED === 'false'`).
+
+---
+
+## 4. Verification Acceptance Evidence Ledger (MSA Clause 8 Aligned)
+
+Per MSA Clause 8, every task completion must be backed by verifiable digital evidence recorded in the project archives:
+
+| Verification Evidence Item | Artifact Location | Acceptance Criteria |
+|---|---|---|
+| **Automated Test Run Output** | Terminal log / CI execution | 50 test files passed, 532+ tests passing (100% green). |
+| **Dynamic Fee Math Proof** | `feeEngine.test.ts` test results | 100% coverage on rounding, zero fees, and carrier caps. |
+| **Physical STK Push Log** | Gateway request/response logs | Recorded timestamp from initiation to physical prompt ($<10\text{s}$). |
+| **On-Chain Attestation Hash** | Stellar Horizon Explorer URL | Valid transaction hash on Stellar ledger for test payment. |
+| **Double-Entry Ledger Audit** | SQL Query output on `ledger_entries` | $\sum \text{Debit} - \sum \text{Credit} = 0.00$ verified across all orders. |
