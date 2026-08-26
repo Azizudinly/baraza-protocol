@@ -2,19 +2,31 @@ export const config = { runtime: 'edge' };
 
 interface CreateIntentRequest {
   communityId: string;
-  amountXlm: number;
+  amountXlm?: number;
+  amountKes?: number;
+  currency?: string;
 }
 
-// MVP rate pinned at intent creation so verify-payment derives a reproducible
-// brza_allocated regardless of price drift. Replace with a live oracle call
-// when one is wired in. Override via XLM_USD_RATE_MVP env var for staging.
+interface CommunityRow {
+  id: string;
+  name: string;
+  activation_fee_minor?: number | null;
+  fee_type?: string | null;
+  carrier_pass_through?: boolean | null;
+  currency?: string | null;
+}
+
+interface FeeBreakdown {
+  baseAmountMinor: number;
+  platformFeeMinor: number;
+  carrierCostMinor: number;
+  totalExpectedMinor: number;
+  currency: string;
+  isFree: boolean;
+}
+
 const XLM_USD_RATE_DEFAULT = 0.10;
 
-// The BRZA phase price is counsel-gated and intentionally not committed to
-// the repo (see brza/constants.ts — all phase prices ship unset). Deployments
-// provide it via the BRZA_PRICE_USD env var; intent creation returns 503
-// until it is configured. This edge handler must stay free of Vite-only
-// import.meta.env modules, so it reads process.env directly.
 function resolveBrzaPriceUsd(): number | null {
   const fromEnv = process.env.BRZA_PRICE_USD;
   if (fromEnv) {
@@ -54,8 +66,6 @@ function base64url(bytes: Uint8Array): string {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
-// btoa() is Latin-1 only — encode to UTF-8 bytes first so non-ASCII
-// communityId values (Arabic, Swahili, etc.) don't throw a DOMException.
 function base64urlFromString(str: string): string {
   return base64url(new TextEncoder().encode(str));
 }
@@ -70,6 +80,70 @@ async function signPayload(encodedPayload: string, secret: string): Promise<stri
   );
   const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(encodedPayload));
   return base64url(new Uint8Array(sig));
+}
+
+function calculateDynamicFee(
+  baseAmountMinor: number,
+  currency = 'KES',
+  carrierPassThrough = true,
+): FeeBreakdown {
+  const safeBase = Number.isFinite(baseAmountMinor) && baseAmountMinor > 0
+    ? Math.floor(baseAmountMinor)
+    : 0;
+
+  if (safeBase === 0) {
+    return {
+      baseAmountMinor: 0,
+      platformFeeMinor: 0,
+      carrierCostMinor: 0,
+      totalExpectedMinor: 0,
+      currency,
+      isFree: true,
+    };
+  }
+
+  const platformFeeMinor = Math.round(safeBase * 0.02);
+  let carrierCostMinor = 0;
+  if (carrierPassThrough && currency.toUpperCase() === 'KES') {
+    if (safeBase >= 20000) {
+      carrierCostMinor = Math.min(Math.round(safeBase * 0.005), 20000);
+    }
+  }
+
+  const totalExpectedMinor = safeBase + platformFeeMinor + carrierCostMinor;
+
+  return {
+    baseAmountMinor: safeBase,
+    platformFeeMinor,
+    carrierCostMinor,
+    totalExpectedMinor,
+    currency: currency.toUpperCase(),
+    isFree: false,
+  };
+}
+
+async function fetchCommunity(
+  supabaseUrl: string,
+  serviceRoleKey: string,
+  communityId: string,
+): Promise<CommunityRow | null> {
+  try {
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/communities?id=eq.${encodeURIComponent(communityId)}&select=id,name,activation_fee_minor,fee_type,carrier_pass_through,currency&limit=1`,
+      {
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: `Bearer ${serviceRoleKey}`,
+          'content-type': 'application/json',
+        },
+      },
+    );
+    if (!res.ok) return null;
+    const rows = (await res.json().catch(() => [])) as CommunityRow[];
+    return rows[0] ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -100,35 +174,82 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   if (!body.communityId?.trim()) return bad('communityId is required');
-  if (!Number.isFinite(body.amountXlm) || body.amountXlm <= 0) return bad('amountXlm must be greater than zero');
+
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  let community: CommunityRow | null = null;
+  if (supabaseUrl && serviceRoleKey) {
+    community = await fetchCommunity(supabaseUrl, serviceRoleKey, body.communityId.trim());
+  }
+
+  // Resolve base dues configuration
+  const feeType = community?.fee_type || 'one_time';
+  let baseAmountMinor = 0;
+
+  if (feeType === 'free') {
+    baseAmountMinor = 0;
+  } else if (community?.activation_fee_minor !== undefined && community?.activation_fee_minor !== null) {
+    baseAmountMinor = Number(community.activation_fee_minor);
+  } else if (body.amountKes !== undefined && Number.isFinite(body.amountKes)) {
+    baseAmountMinor = Math.round(body.amountKes * 100);
+  } else {
+    // Fallback default: KES 500 = 50,000 cents if unset
+    baseAmountMinor = 50000;
+  }
+
+  const currency = community?.currency || body.currency || 'KES';
+  const carrierPassThrough = community?.carrier_pass_through !== false;
+
+  // Zero-fee community instant bypass
+  if (feeType === 'free' || baseAmountMinor <= 0) {
+    return json({
+      zeroFee: true,
+      bypassPayment: true,
+      communityId: body.communityId.trim(),
+      message: 'Community requires zero activation dues. Proceed directly to membership activation.',
+    }, { status: 200 });
+  }
+
+  const feeBreakdown = calculateDynamicFee(baseAmountMinor, currency, carrierPassThrough);
+
+  const amountXlm = Number.isFinite(body.amountXlm) && (body.amountXlm ?? 0) > 0
+    ? (body.amountXlm as number)
+    : 1;
 
   const nonce = base64url(crypto.getRandomValues(new Uint8Array(12)));
   const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-  // Pin both rates in the signed payload. verify-payment uses these to derive
-  // brza_allocated from the actual amountXlm Horizon settled (may differ from
-  // body.amountXlm if the user overpaid).
   const xlmUsdRate = resolveXlmUsdRate();
   const brzaPriceUsd = resolveBrzaPriceUsd();
+
   if (brzaPriceUsd === null) {
     return json({
       error: 'pricing_not_configured',
       message: 'Set BRZA_PRICE_USD to enable payment intent creation.',
     }, { status: 503 });
   }
+
   const payload = JSON.stringify({
     communityId: body.communityId.trim(),
-    amountXlm: body.amountXlm,
+    amountXlm,
     xlmUsdRate,
     brzaPriceUsd,
+    baseAmountMinor: feeBreakdown.baseAmountMinor,
+    platformFeeMinor: feeBreakdown.platformFeeMinor,
+    carrierCostMinor: feeBreakdown.carrierCostMinor,
+    totalExpectedMinor: feeBreakdown.totalExpectedMinor,
+    currency: feeBreakdown.currency,
     expiresAt,
     nonce,
   });
+
   const encodedPayload = base64urlFromString(payload);
   const sig = await signPayload(encodedPayload, secret);
 
   return json({
     intentToken: `${encodedPayload}.${sig}`,
-    amountXlm: body.amountXlm,
+    feeBreakdown,
+    amountXlm,
     xlmUsdRate,
     brzaPriceUsd,
     expiresAt,

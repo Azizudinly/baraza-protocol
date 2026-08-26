@@ -1,15 +1,15 @@
 /**
  * Membership activation — durable Supabase write triggered by the client
  * when JoinStatus observes a payment order reach a terminal positive state
- * (INDEXER_CONFIRMED or RECONCILED).
+ * (INDEXER_CONFIRMED or RECONCILED), or directly for verified zero-fee communities.
  *
  * Server-side gating:
- *   1. Order must exist in `payment_orders` with status >= INDEXER_CONFIRMED.
- *   2. Idempotent — duplicate POSTs with the same (community_id, wallet_address)
+ *   1. For paid communities: Order must exist in `payment_orders` with status >= INDEXER_CONFIRMED.
+ *   2. For free communities: Community must be configured with fee_type='free' or activation_fee_minor=0.
+ *   3. Idempotent — duplicate POSTs with the same (community_id, wallet_address)
  *      return 200 with the existing record.
  *
- * Client always also calls `recordActiveMembership()` locally so the dashboard
- * recognises the user immediately even if the Supabase insert is async/slow.
+ * Conforms to SAD v1.0 §3.4, Holy Grail §14, and Launch Memo 3 §4.
  */
 
 export const config = { runtime: 'edge' };
@@ -17,7 +17,7 @@ export const config = { runtime: 'edge' };
 interface ActivateRequest {
   orderId: string;
   communityId: string;
-  /** Solana base58 pubkey. Required unless phoneIdentifier is provided. */
+  /** Stellar G-address, EVM 0x address, or phone identifier. */
   walletAddress: string | null;
   /** phone:+254... identifier for phone-only users with no wallet. */
   phoneIdentifier?: string | null;
@@ -30,6 +30,12 @@ interface PaymentOrderRow {
   provider_environment: string;
   activation_secret_hash: string | null;
   wallet_address: string | null;
+}
+
+interface CommunityRow {
+  id: string;
+  activation_fee_minor?: number | null;
+  fee_type?: string | null;
 }
 
 function json(body: unknown, init?: ResponseInit): Response {
@@ -65,6 +71,29 @@ async function fetchOrder(url: string, serviceKey: string, orderId: string): Pro
   if (!res.ok) return null;
   const rows = (await res.json().catch(() => [])) as PaymentOrderRow[];
   return rows[0] ?? null;
+}
+
+async function verifyCommunityIsFree(url: string, serviceKey: string, communityId: string): Promise<boolean> {
+  try {
+    const res = await fetch(
+      `${url}/rest/v1/communities?id=eq.${encodeURIComponent(communityId)}&select=id,activation_fee_minor,fee_type&limit=1`,
+      {
+        headers: {
+          apikey: serviceKey,
+          Authorization: `Bearer ${serviceKey}`,
+        },
+      },
+    );
+    if (!res.ok) return false;
+    const rows = (await res.json().catch(() => [])) as CommunityRow[];
+    const community = rows[0];
+    if (!community) return false;
+    if (community.fee_type === 'free') return true;
+    if (community.activation_fee_minor === 0 || community.activation_fee_minor === null) return true;
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 async function hashActivationSecret(secret: string): Promise<string> {
@@ -167,9 +196,6 @@ async function insertMembership(
   });
   if (!res.ok) {
     const detail = await res.text().catch(() => '');
-    // Partial unique index `memberships_active_community_wallet_unique` fires
-    // when a parallel request beat us to the insert. Treat as "already exists"
-    // rather than 500ing the caller.
     const isDuplicate = res.status === 409 ||
       /duplicate key|23505|memberships_active_community_wallet_unique/i.test(detail);
     return { ok: false, duplicate: isDuplicate, detail };
@@ -216,10 +242,45 @@ export default async function handler(req: Request): Promise<Response> {
   if (!body.walletAddress && !body.phoneIdentifier) return bad('walletAddress or phoneIdentifier is required');
   if (!body.activationSecret) return bad('activationSecret is required');
 
-  // walletAddress takes priority; phoneIdentifier supports phone-only onboarding.
   const effectiveAddress = body.walletAddress ?? body.phoneIdentifier!;
 
-  // Gate: order must be in a terminal positive state.
+  // ─── Free Community Instant Bypass Path ──────────────────────────────
+  if (body.orderId === 'free_activation') {
+    const isFree = await verifyCommunityIsFree(url, serviceKey, body.communityId);
+    if (!isFree) {
+      return bad('This community requires activation payment dues.', 403);
+    }
+
+    // Idempotent: return existing membership if one already exists.
+    const existing = await findExistingMembership(url, serviceKey, body.communityId, effectiveAddress);
+    if (existing) {
+      return json({
+        ok: true,
+        persisted: true,
+        memberId: existing.member_id,
+        status: existing.status,
+        created: false,
+      });
+    }
+
+    const userIdHash = await identityHash(effectiveAddress);
+    const memberId = generateMemberId();
+    const result = await insertMembership(url, serviceKey, {
+      member_id: memberId,
+      community_id: body.communityId,
+      user_id_hash: userIdHash,
+      wallet_address: effectiveAddress,
+      payment_order_id: 'free_activation',
+    });
+
+    if (!result.ok && !result.duplicate) {
+      return json({ ok: false, persisted: false, error: result.detail }, { status: 500 });
+    }
+
+    return json({ ok: true, persisted: true, memberId, status: 'ACTIVE', created: true });
+  }
+
+  // ─── Paid Community Order Verification Path ──────────────────────────
   const order = await fetchOrder(url, serviceKey, body.orderId);
   if (!order) {
     return bad(`Order ${body.orderId} not found`, 404);
@@ -292,7 +353,6 @@ export default async function handler(req: Request): Promise<Response> {
 
   if (!result.ok) {
     if (result.duplicate) {
-      // Lost the insert race; another caller just created the membership.
       const winner = await findExistingMembership(url, serviceKey, body.communityId, effectiveAddress);
       if (winner) {
         return json({

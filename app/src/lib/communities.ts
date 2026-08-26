@@ -4,11 +4,15 @@ import type { Chain } from '@/lib/chain';
 
 type TreasuryPolicy = 'multisig-ready' | 'proposal-only' | 'manual-review';
 
-type CommunityInsert = {
+export type CommunityInsert = {
   name: string;
   type: string;
   description: string;
   membershipFee: number;
+  activationFeeMinor?: number;
+  feeType?: 'one_time' | 'recurring_monthly' | 'free';
+  carrierPassThrough?: boolean;
+  currency?: string;
   chain?: Chain;
   quorumPct?: number;
   approvalThresholdPct?: number;
@@ -20,13 +24,20 @@ type CommunityInsert = {
   walletProofHeaders?: Record<string, string>;
 };
 
-type CommunityRow = {
+export type CommunityRow = {
   id: string;
   name: string;
   type: string;
   description: string;
   membership_fee?: number | null;
   membershipFee?: number | null;
+  activation_fee_minor?: number | null;
+  activationFeeMinor?: number | null;
+  fee_type?: string | null;
+  feeType?: string | null;
+  carrier_pass_through?: boolean | null;
+  carrierPassThrough?: boolean | null;
+  currency?: string | null;
   member_count?: number | null;
   memberCount?: number | null;
   fund_balance?: number | null;
@@ -122,12 +133,17 @@ function parseChain(raw: string | null | undefined): CommunityChain {
 
 function communityFromRow(row: CommunityRow): Community {
   const chain = parseChain(row.chain);
+  const feeMinor = row.activation_fee_minor ?? row.activationFeeMinor;
+  const resolvedFee = feeMinor !== undefined && feeMinor !== null
+    ? feeMinor / 100
+    : (row.membership_fee ?? row.membershipFee ?? 0);
+
   return {
     id: row.id,
     name: row.name,
     type: row.type,
     description: row.description,
-    membershipFee: row.membership_fee ?? row.membershipFee ?? 0,
+    membershipFee: resolvedFee,
     memberCount: row.member_count ?? row.memberCount ?? 0,
     fundBalance: row.fund_balance ?? row.fundBalance ?? 0,
     activeDecisions: row.active_decisions ?? row.activeDecisions ?? 0,
@@ -182,12 +198,11 @@ export async function listCommunities(): Promise<Community[]> {
   const { data, error } = await client
     .from('communities')
     .select(
-      'id,name,type,description,membership_fee,member_count,fund_balance,active_decisions,created_at,image,chain,quorum_pct,approval_threshold_pct,voting_period_days,treasury_policy,paybill_number,ussd_shortcode,created_by',
+      'id,name,type,description,membership_fee,activation_fee_minor,fee_type,carrier_pass_through,currency,member_count,fund_balance,active_decisions,created_at,image,chain,quorum_pct,approval_threshold_pct,voting_period_days,treasury_policy,paybill_number,ussd_shortcode,created_by',
     )
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  // In Supabase mode return real data only — no mock contamination
   return sortByDate((data ?? []).map(communityFromRow));
 }
 
@@ -200,7 +215,7 @@ export async function getCommunity(id: string): Promise<Community | null> {
   const { data, error } = await client
     .from('communities')
     .select(
-      'id,name,type,description,membership_fee,member_count,fund_balance,active_decisions,created_at,image,chain,quorum_pct,approval_threshold_pct,voting_period_days,treasury_policy,paybill_number,ussd_shortcode,created_by',
+      'id,name,type,description,membership_fee,activation_fee_minor,fee_type,carrier_pass_through,currency,member_count,fund_balance,active_decisions,created_at,image,chain,quorum_pct,approval_threshold_pct,voting_period_days,treasury_policy,paybill_number,ussd_shortcode,created_by',
     )
     .eq('id', id)
     .maybeSingle();
@@ -212,13 +227,15 @@ export async function getCommunity(id: string): Promise<Community | null> {
 
 export async function createCommunityRecord(input: CommunityInsert): Promise<Community> {
   const now = new Date().toISOString();
-  // parseChain maps non-community chains (e.g. 'mpesa') to 'solana', matching
-  // how the same value would be read back from a stored row.
   const chain: CommunityChain = parseChain(input.chain);
   const quorumPct = input.quorumPct ?? DEFAULT_GOVERNANCE.quorumPct;
   const approvalThresholdPct = input.approvalThresholdPct ?? DEFAULT_GOVERNANCE.approvalThresholdPct;
   const votingPeriodDays = input.votingPeriodDays ?? DEFAULT_GOVERNANCE.votingPeriodDays;
   const treasuryPolicy = input.treasuryPolicy ?? DEFAULT_GOVERNANCE.treasuryPolicy;
+
+  const activationFeeMinor = input.activationFeeMinor !== undefined
+    ? input.activationFeeMinor
+    : Math.round(input.membershipFee * 100);
 
   const localCommunity: Community = {
     id: `community-${Date.now()}`,
@@ -250,6 +267,10 @@ export async function createCommunityRecord(input: CommunityInsert): Promise<Com
         type: input.type,
         description: input.description,
         membershipFee: input.membershipFee,
+        activationFeeMinor,
+        feeType: input.feeType || (input.membershipFee === 0 ? 'free' : 'one_time'),
+        carrierPassThrough: input.carrierPassThrough ?? true,
+        currency: input.currency || 'KES',
         chain,
         quorumPct,
         approvalThresholdPct,
@@ -266,7 +287,6 @@ export async function createCommunityRecord(input: CommunityInsert): Promise<Com
       if (payload.persisted && payload.community) {
         return communityFromRow(payload.community);
       }
-      // Server not configured (persisted: false) — fall through to localStorage
     }
   } catch {
     // Network/CORS/local-dev without vercel dev — fall through to localStorage
