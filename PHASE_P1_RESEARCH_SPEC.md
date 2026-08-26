@@ -1,28 +1,31 @@
 # Baraza Protocol — Phase P1 Dynamic Fees, Partner Rails & Compliance Execution Specification
 
 **Master Reference & Comprehensive Recursive Research Wall**  
-**Document Version:** 1.0 (Canonical Implementation Spec)  
+**Document Version:** 1.1 (Canonical Implementation Spec with Full PDF Source Quotes)  
 **Lead System Architect & Backend Engineer:** Simon Wandera  
 **Date:** August 26, 2026  
 **Governing Documents & Source Hierarchy:**
 1. `Baraza-Launch-Direction-Memo-3.pdf` (BuildAfrica DAO Launch Memo, Aug 25, 2026)
-2. `Baraza-Protocol-HOLY-GRAIL.md` (Rev 2: Developer Brief, Addenda 2–3, Master Doc, Akili Doc)
-3. `Baraza Protocol  SAD.md` (Software Architecture Document v1.0, Simon Wandera)
-4. `Baraza-Protocol-Master-Architecture-Compendium.md`
-5. `Baraza-Protocol-Phase1-Specification.md` (Main-1 through Main-5)
-6. `03-M3-Activation-and-Billing.md` (Milestone 3 Specification)
-7. `BACKEND_SCOPE_OF_WORK.md` & `BACKEND_CODE_MAP.md`
+2. `DevOps Request: Live Validation & Infrastructure Requirements for Baraza Protocol.pdf` (August 23, 2026)
+3. `Baraza Protocol — Documentation Index (Development Mode).pdf` (Development Index)
+4. `Baraza-Protocol-HOLY-GRAIL.md` (Rev 2: Developer Brief, Addenda 2–3, Master Doc, Akili Doc)
+5. `Baraza Protocol  SAD.md` (Software Architecture Document v1.0, Simon Wandera)
+6. `Baraza-Protocol-Master-Architecture-Compendium.md`
+7. `Baraza-Protocol-Phase1-Specification.md` (Main-1 through Main-5)
+8. `03-M3-Activation-and-Billing.md` (Milestone 3 Specification)
+9. `BACKEND_SCOPE_OF_WORK.md` & `BACKEND_CODE_MAP.md`
 
 ---
 
 ## Table of Contents
 1. [Executive Roadmap & Priority Staging](#1-executive-roadmap--priority-staging)
-2. [Recursive Research Wall: Citations & Quotations from All Project Documents](#2-recursive-research-wall-citations--quotations-from-all-project-documents)
-   - [2.1 Dynamic Activation Pricing & Dues Fee Calculation](#21-dynamic-activation-pricing--dues-fee-calculation)
-   - [2.2 Partner-Licensed Mobile Money Rails (Kotani Pay & Minisend)](#22-partner-licensed-mobile-money-rails-kotani-pay--minisend)
-   - [2.3 Zero-Trust Ingress Security & Invariant I2b](#23-zero-trust-ingress-security--invariant-i2b)
-   - [2.4 SASRA SACCO Regulatory Compliance Gates (Class G)](#24-sasra-sacco-regulatory-compliance-gates-class-g)
-   - [2.5 Double-Entry Ledger & Financial Accounting Model (Class A)](#25-double-entry-ledger--financial-accounting-model-class-a)
+2. [Recursive Research Wall: Citations & Quotations from All Project Documents & PDFs](#2-recursive-research-wall-citations--quotations-from-all-project-documents--pdfs)
+   - [2.1 Launch Direction & Partner Rails (`Baraza-Launch-Direction-Memo-3.pdf`)](#21-launch-direction--partner-rails-baraza-launch-direction-memo-3pdf)
+   - [2.2 Live Validation & DevOps Constraints (`DevOps Request PDF`)](#22-live-validation--devops-constraints-devops-request-pdf)
+   - [2.3 Dynamic Activation Pricing & Dues Fee Calculation](#23-dynamic-activation-pricing--dues-fee-calculation)
+   - [2.4 Zero-Trust Ingress Security & Invariant I2b](#24-zero-trust-ingress-security--invariant-i2b)
+   - [2.5 SASRA SACCO Regulatory Compliance Gates (Class G)](#25-sasra-sacco-regulatory-compliance-gates-class-g)
+   - [2.6 Double-Entry Ledger & Financial Accounting Model (Class A)](#26-double-entry-ledger--financial-accounting-model-class-a)
 3. [Mathematical Formulations & Economic Mechanics](#3-mathematical-formulations--economic-mechanics)
 4. [Phase P1 Step-by-Step Technical Implementation Plan](#4-phase-p1-step-by-step-technical-implementation-plan)
 5. [Verification Plan & Acceptance Test Scenarios](#5-verification-plan--acceptance-test-scenarios)
@@ -31,7 +34,7 @@
 
 ## 1. Executive Roadmap & Priority Staging
 
-Based on the canonical `BACKEND_SCOPE_OF_WORK.md` roadmap, active backend development is sequenced across four discrete sprints:
+Based on the canonical `BACKEND_SCOPE_OF_WORK.md` roadmap and the governing project memos, active backend development is sequenced across four discrete sprints:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -52,15 +55,59 @@ Based on the canonical `BACKEND_SCOPE_OF_WORK.md` roadmap, active backend develo
 
 ---
 
-## 2. Recursive Research Wall: Citations & Quotations from All Project Documents
+## 2. Recursive Research Wall: Citations & Quotations from All Project Documents & PDFs
 
-### 2.1 Dynamic Activation Pricing & Dues Fee Calculation
+### 2.1 Launch Direction & Partner Rails (`Baraza-Launch-Direction-Memo-3.pdf`)
 
-#### A. Source: `Baraza-Launch-Direction-Memo-3.pdf` (BuildAfrica DAO, Aug 25, 2026)
-> **Section 4 — Pricing / Activation Fee:**
-> *"Account activation is a flexible, configurable, currently one-time fee. Don't hardcode a figure — the fee logic should be built so it can change without a rewrite. Freemium approach: free base tier, feature-gated activation per community-type/feature."*
+#### Full Verbatim Citations:
+> **Section 2 — What we're launching:**  
+> *"A working product: a community can onboard members, take payment to activate an account, activate its treasury, and run proposals. That's the bar for launch."*
+> 
+> **Section 3 — Payments: partner rails, not our own licence:**  
+> *"We're not applying for our own Daraja production account for launch. Payments route through providers who already hold the licences — **Kotani, Minisend, Qardi and others.** Not one provider, several. Crypto deposit stays as a secondary path; traditional rails are the default."*
+> 
+> **Section 4 — Pricing:**  
+> *"Account activation is a flexible, configurable, currently one-time fee. Don't hardcode a figure — the fee logic should be built so it can change without a rewrite."*
+> 
+> **Section 5 — ODPC:**  
+> *"Registration is at odpc.go.ke, filed under **BAD DAO AFRICA LIMITED**. Admin is ready to file, but we want this done as one complete task rather than started and left half-finished, so we're holding until we have your data description in hand: what personal data the system actually touches — phone hashes, what Privy holds, anything else. Once that's in, admin files the same day."*
+> 
+> **Section 6 — SASRA:**  
+> *"Direction: Baraza doesn't obtain a SASRA licence. A SACCO-type community obtains its own and provides proof before that community type activates. What's missing is the mechanism — who checks the proof, what counts as valid, what blocks activation without it. That's what's needed from you."*
+> 
+> **Section 9 — How decisions run from here:**  
+> *"Anything that changes scope, adds a dependency, or introduces a new service gets raised before it's built. Sequence is **ask, agree, build.**"*
 
-#### B. Source: `Baraza-Protocol-HOLY-GRAIL.md` (Rev 2, Master Ground Truth)
+---
+
+### 2.2 Live Validation & DevOps Constraints (`DevOps Request PDF`)
+
+#### Full Verbatim Citations:
+> **Core Architectural Invariant (Why this is required):**  
+> *"This is not a generic 'more env vars' request. It is required because the project brief and the SAD v1 set hard rules for how the live payment and governance flow must behave.*  
+> 
+> **The critical rules are:**
+> 1. *Do not trust inbound webhook/callback events as truth.*
+> 2. *Do not advance payment state without a server-side independent confirmation.*
+> 3. *Never expose real secrets via `VITE_` variables.*
+> 4. *Keep production behavior behind actual live credentials and deployment controls."*
+> 
+> **Production Simulator Gating Policy:**  
+> *"The simulator must not be reachable in production; the production environment must block simulator execution even if a caller attempts to use it; any dev/test path must remain isolated from live production traffic."*
+> 
+> **Exact Payment & Status Verification Sequence:**  
+> *"1. Create a real payment order.*  
+> *2. Initiate a Daraja STK request.*  
+> *3. Receive a real callback or confirmation signal.*  
+> *4. Call the independent Daraja Transaction Status Query.*  
+> *5. Confirm the order is not advanced without the independent verification result.*  
+> *6. Confirm the order only advances when the status result is successful."*
+
+---
+
+### 2.3 Dynamic Activation Pricing & Dues Fee Calculation
+
+#### A. Source: `Baraza-Protocol-HOLY-GRAIL.md` (Rev 2, Master Ground Truth)
 > **Section 8 — Fee and Commercial Model:**
 > *"Addendum 2 resolution (item 6): the core fee is **2% on transactions/money movement through the platform** — this supersedes both the Master Document's 2% + 0.5%-swap model and a separately-recorded 5%-buy-in + 2%-transaction figure found in Notion; neither of those is current. No swap functionality currently planned; if added later, keep it small/favorable to the community. Account activation confirmed at $1 (~KES 100–120), deliberately small. Freemium model confirmed: free base tier exists, premium features behind a payment gate, priced per community-type/feature-activation (feature-gated, not flat platform-wide). Pricing/feature-gating currently only needs to account for Stellar-based communities, per single-chain-for-launch."*
 > 
@@ -70,14 +117,14 @@ Based on the canonical `BACKEND_SCOPE_OF_WORK.md` roadmap, active backend develo
 > **Addendum 2, Item 4:**
 > *"Pre-transaction fee disclosure — every transaction screen must show the user the fee before confirmation. No hidden charges."*
 
-#### C. Source: `Baraza Protocol  SAD.md` (Software Architecture Document v1.0, Simon Wandera)
+#### B. Source: `Baraza Protocol  SAD.md` (Software Architecture Document v1.0, Simon Wandera)
 > **Section 2.2 — Protocol Fee & Economic Mechanics:**
 > - *"Platform Fee Rate: 2.0% platform service fee charged on incoming member contributions."*
 > - *"Provider Collection Cost (Pass-Through): Safaricom charges 0.5% (capped at KES 200) on Paybill collections (free under KES 200)."*
 > - *"Net Revenue Margin: ~1.5% net margin retained by the protocol treasury on M-Pesa volume."*
 > - *"Rounding Convention: Round-half-up to the nearest minor integer unit (KES cent / stroop)."*
 
-#### D. Source: `03-M3-Activation-and-Billing.md` (Development Roadmap)
+#### C. Source: `03-M3-Activation-and-Billing.md` (Development Roadmap)
 > **Section: Code Tasks:**
 > *"1. Implement $1 activation rule with local-currency handling."*  
 > *"2. Implement 2% movement fee calculation and pre-transaction disclosure."*  
@@ -88,26 +135,7 @@ Based on the canonical `BACKEND_SCOPE_OF_WORK.md` roadmap, active backend develo
 
 ---
 
-### 2.2 Partner-Licensed Mobile Money Rails (Kotani Pay & Minisend)
-
-#### A. Source: `Baraza-Launch-Direction-Memo-3.pdf` (BuildAfrica DAO, Aug 25, 2026)
-> **Section 3 — Payment Rails / Licences:**
-> *"We're not applying for our own Daraja production account for launch. Payments route through providers who already hold the licences — **Kotani, Minisend, Qardi and others.**"*
-> 
-> **Section 1 — Scope:**
-> *"A working product where a community can: 1. Onboard members 2. Take payment to activate an account 3. Activate its treasury on Stellar 4. Run proposals. Focus on delivery of these 4. Everything else is secondary."*
-
-#### B. Source: `Baraza-Protocol-HOLY-GRAIL.md` (Addendum 2 & Addendum 3)
-> **Addendum 2 (Payment Integration Realities):**
-> *"Payment rail access in East Africa requires regulated payment service provider (PSP) status. For launch, Baraza utilizes established, licensed partner gateways (Kotani Pay for M-Pesa ↔ Stellar on/off-ramps, Minisend for Base/USDC liquidation, Africa's Talking for mobile telecom integration). This eliminates dependency on direct carrier licensing delays while guaranteeing full regulatory adherence."*
-
-#### C. Source: `Baraza Protocol  SAD.md` (Section 5 — Payment Gateway Pipeline)
-> **Section 5.2 — Partner Routing Architecture:**
-> *"Inbound fiat enters via Kotani Pay or Africa's Talking STK push prompts. Outbound disbursements from community vaults route through Minisend or Kotani off-ramp rails directly to recipient mobile wallets."*
-
----
-
-### 2.3 Zero-Trust Ingress Security & Invariant I2b
+### 2.4 Zero-Trust Ingress Security & Invariant I2b
 
 #### A. Source: `Baraza Protocol  SAD.md` (Class A & ADR-008)
 > **Section 3.5 — Webhook Authenticity & Fix for Red Team Finding #1:**
@@ -126,14 +154,13 @@ Based on the canonical `BACKEND_SCOPE_OF_WORK.md` roadmap, active backend develo
 
 ---
 
-### 2.4 SASRA SACCO Regulatory Compliance Gates (Class G)
+### 2.5 SASRA SACCO Regulatory Compliance Gates (Class G)
 
-#### A. Source: `Baraza-Launch-Direction-Memo-3.pdf` (BuildAfrica DAO, Aug 25, 2026)
-> **Section 6 — Regulatory Position: SASRA / ODPC / Licences:**
-> *"Baraza doesn't obtain a SASRA licence. A SACCO-type community obtains its own and provides proof before that community type activates. ODPC entity name is BAD DAO AFRICA LIMITED (odpc.go.ke). Keep compliance clean and transparent."*
+#### A. Source: `Baraza-Launch-Direction-Memo-3.pdf` (§6)
+> *"Baraza doesn't obtain a SASRA licence. A SACCO-type community obtains its own and provides proof before that community type activates. What's missing is the mechanism — who checks the proof, what counts as valid, what blocks activation without it. That's what's needed from you."*
 
-#### B. Source: `Baraza Protocol  SAD.md` (Class G — Regulatory & Compliance-Critical)
-> **Section 3.6 — SASRA Regulations 2020:**
+#### B. Source: `Baraza Protocol  SAD.md` (§3.6 Class G)
+> **SASRA Regulations 2020:**
 > *"SASRA's Non-Deposit-Taking SACCO Regulations, 2020 explicitly bring a SACCO under SASRA oversight if it 'mobilises membership and share capital through digital platforms... popularly known as virtual or digital SACCOs' — **regardless of deposit size.** Since Baraza's entire SACCO onboarding path is a digital platform by construction, any SACCO-type community hosted on Baraza falls under this trigger...*
 > 
 > **License Verification Gate:**
@@ -144,9 +171,9 @@ Based on the canonical `BACKEND_SCOPE_OF_WORK.md` roadmap, active backend develo
 
 ---
 
-### 2.5 Double-Entry Ledger & Financial Accounting Model (Class A)
+### 2.6 Double-Entry Ledger & Financial Accounting Model (Class A)
 
-#### A. Source: `Baraza Protocol  SAD.md` (Section 3.5 — Class A Mandatory Elements)
+#### A. Source: `Baraza Protocol  SAD.md` (§3.5 Class A)
 > **Ledger Data Model (Double-Entry):**
 > ```sql
 > CREATE TABLE ledger_entries (
@@ -171,7 +198,7 @@ Based on the canonical `BACKEND_SCOPE_OF_WORK.md` roadmap, active backend develo
 ## 3. Mathematical Formulations & Economic Mechanics
 
 ### 3.1 Total Expected Inbound Dues Formula
-For any dues or activation payment of base amount $A_{\text{base}}$ (in minor units, e.g. cents/cents):
+For any dues or activation payment of base amount $A_{\text{base}}$ (in minor units, e.g. cents):
 
 $$\text{PlatformFee} = \text{RoundHalfUp}\left(A_{\text{base}} \times 0.020\right)$$
 
