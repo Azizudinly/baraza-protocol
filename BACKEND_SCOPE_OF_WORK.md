@@ -1,7 +1,7 @@
 # Baraza Protocol — Master Backend Scope of Work & Implementation Blueprint
 
-**Master Reference, Recursive Research Wall & Complete Execution Roadmap**  
-**Document Version:** 3.0 (Unified Master Execution Release)  
+**Master Reference, Recursive Research Wall, Architectural Decisions & Complete Execution Roadmap**  
+**Document Version:** 4.0 (Unified Master Execution Release with Locked Stakeholder Decisions)  
 **Lead System Architect & Backend Engineer:** Simon Wandera  
 **Date:** August 26, 2026  
 **Governing Documents & Source Hierarchy:**
@@ -18,30 +18,47 @@
 ---
 
 ## Table of Contents
-1. [Master Governance Tagging & Alignment Rules](#1-master-governance-tagging--alignment-rules)
-2. [Recursive Research Wall: Verbatim Citations Across All Project Documents & PDFs](#2-recursive-research-wall-verbatim-citations-across-all-project-documents--pdfs)
-   - [2.1 Launch Direction & Partner-Licensed Rails (`Baraza-Launch-Direction-Memo-3.pdf`)](#21-launch-direction--partner-licensed-rails-baraza-launch-direction-memo-3pdf)
-   - [2.2 Live Validation & DevOps Constraints (`DevOps Request PDF`)](#22-live-validation--devops-constraints-devops-request-pdf)
-   - [2.3 Dynamic Activation Pricing & Dues Fee Calculation](#23-dynamic-activation-pricing--dues-fee-calculation)
-   - [2.4 Zero-Trust Ingress Security & Invariant I2b](#24-zero-trust-ingress-security--invariant-i2b)
-   - [2.5 SASRA SACCO Regulatory Compliance Gates (Class G)](#25-sasra-sacco-regulatory-compliance-gates-class-g)
-   - [2.6 Double-Entry Ledger & Financial Accounting Model (Class A)](#26-double-entry-ledger--financial-accounting-model-class-a)
-3. [Mathematical Formulations & Economic Invariants](#3-mathematical-formulations--economic-invariants)
-4. [Master Scope of Work by Subsystem (Sections A through H)](#4-master-scope-of-work-by-subsystem-sections-a-through-h)
+1. [Locked Stakeholder Architectural Decisions (August 26, 2026)](#1-locked-stakeholder-architectural-decisions-august-26-2026)
+2. [Master Governance Tagging & Alignment Rules](#2-master-governance-tagging--alignment-rules)
+3. [Recursive Research Wall: Verbatim Citations Across All Project Documents & PDFs](#3-recursive-research-wall-verbatim-citations-across-all-project-documents--pdfs)
+   - [3.1 Launch Direction & Partner-Licensed Rails (`Baraza-Launch-Direction-Memo-3.pdf`)](#31-launch-direction--partner-licensed-rails-baraza-launch-direction-memo-3pdf)
+   - [3.2 Live Validation & DevOps Constraints (`DevOps Request PDF`)](#32-live-validation--devops-constraints-devops-request-pdf)
+   - [3.3 Dynamic Activation Pricing & Dues Fee Calculation](#33-dynamic-activation-pricing--dues-fee-calculation)
+   - [3.4 Zero-Trust Ingress Security & Invariant I2b](#34-zero-trust-ingress-security--invariant-i2b)
+   - [3.5 SASRA SACCO Regulatory Compliance Gates (Class G)](#35-sasra-sacco-regulatory-compliance-gates-class-g)
+   - [3.6 Double-Entry Ledger & Financial Accounting Model (Class A)](#36-double-entry-ledger--financial-accounting-model-class-a)
+4. [Mathematical Formulations & Economic Invariants](#4-mathematical-formulations--economic-invariants)
+5. [Master Scope of Work by Subsystem (Sections A through H)](#5-master-scope-of-work-by-subsystem-sections-a-through-h)
    - [Section A: Smart Contracts & On-Chain Settlement Subsystem](#section-a-smart-contracts--on-chain-settlement-subsystem)
-   - [Section B: Zero-Trust Payment Ingress, Partner Rails & Fee Engine](#section-b-zero-trust-payment-ingress-partner-rails--fee-engine)
+   - [Section B: Multi-Provider Payment Ingress (Kotani, Daraja, Paystack, Minisend)](#section-b-multi-provider-payment-ingress-kotani-daraja-paystack-minisend)
    - [Section C: Double-Entry Ledger & Financial Accounting Model](#section-c-double-entry-ledger--financial-accounting-model)
    - [Section D: SASRA & Regulatory Compliance Subsystem (Class G)](#section-d-sasra--regulatory-compliance-subsystem-class-g)
-   - [Section E: Conversational Bot Engine & WhatsApp Gateway (ADR-007)](#section-e-conversational-bot-engine--whatsapp-gateway-adr-007)
+   - [Section E: Conversational Bot Engine & WhatsApp Gateway Roadmap](#section-e-conversational-bot-engine--whatsapp-gateway-roadmap)
    - [Section F: Background Reconciliation & Durable Crons (ADR-004)](#section-f-background-reconciliation--durable-crons-adr-004)
    - [Section G: Standard Production SaaS & Quality-of-Life Endpoints](#section-g-standard-production-saas--quality-of-life-endpoints)
    - [Section H: System Architect Strategic Proposals for Scale & Resilience](#section-h-system-architect-strategic-proposals-for-scale--resilience)
-5. [Step-by-Step Technical Implementation Plan (Phased Sprints P1–P8)](#5-step-by-step-technical-implementation-plan-phased-sprints-p1p8)
-6. [Verification Plan & Acceptance Test Scenarios](#6-verification-plan--acceptance-test-scenarios)
+6. [Step-by-Step Technical Implementation Plan (Phased Sprints P1–P8)](#6-step-by-step-technical-implementation-plan-phased-sprints-p1p8)
+7. [Verification Plan & Acceptance Test Scenarios](#7-verification-plan--acceptance-test-scenarios)
 
 ---
 
-## 1. Master Governance Tagging & Alignment Rules
+## 1. Locked Stakeholder Architectural Decisions (August 26, 2026)
+
+The following architectural and commercial decisions have been formally locked by the Lead Architect / Stakeholder:
+
+| # | Architecture Domain | Locked Decision | Concrete Technical Implementation |
+|---|---|---|---|
+| **1** | **Payment Rails Topology** | **Multi-Provider Architecture** (Kotani Pay as Primary Default, with Direct Daraja, Paystack, Minisend & Africa's Talking) | • **Primary Default:** Kotani Pay (Stellar M-Pesa on/off-ramp)<br>• **Direct Telco:** Direct Safaricom Daraja STK Push & Status Query<br>• **Pan-African Aggregator:** Paystack (Card, Bank, M-Pesa)<br>• **Off-Ramp Liquidity:** Minisend (USDC liquidation)<br>• **Telecom Infrastructure:** Africa's Talking (SMS/USSD) |
+| **2** | **Fee Model & Round-Trip Treatment** | **Inbound Dues Only (2.0%)** | 2.0% platform fee applied to **inbound member dues/contributions only** with pre-transaction disclosure. Outbound vault disbursements have **0% platform fee** (pass-through network gas only). Preserves rotation economics for Merry-Go-Rounds. |
+| **3** | **SASRA License Gate** | **Admin Review Gate** | `POST /api/compliance/sacco-license-submit` records uploaded certificates as `PENDING_REVIEW`. Compliance officers review via admin dashboard to transition to `VERIFIED` or `REJECTED`. Feature interceptor blocks loans and capital mobilization until `VERIFIED`. |
+| **4** | **Payment Attestation Key Custody** | **Hardware-Backed Cloud KMS (Option B)** | AWS KMS / GCP Cloud KMS HSM cryptographic module manages attestation private keys. Serverless API invokes KMS asymmetric sign API with strict IAM role bindings, eliminating unencrypted raw private keys in environment variables. |
+| **5** | **WhatsApp Gateway Strategy** | **Evolution API (Dev/Test) $\to$ Official Meta Cloud API (Production)** | Use local Dockerized `evolution-api` for development, staging, and local testing. Architect the FSM adapter interface to support a clean, drop-in migration to the official Meta WhatsApp Cloud API for production deployment. |
+| **6** | **ODPC Privacy Boundary** | **Strict Minimalist PII Architecture** | • `payment_orders.phone_hash` stores SHA-256 HMAC-peppered phone numbers.<br>• Privy stores MPC non-custodial user wallet associations.<br>• Supabase stores **zero unhashed phone numbers, national IDs, or biometric data**.<br>• Clean filing ready for `BAD DAO AFRICA LIMITED` at `odpc.go.ke`. |
+| **7** | **Financial Record Retention** | **7-Year Statutory Financial Standard** | Enforce a **7-year retention policy** on all `ledger_entries`, `payment_orders`, and `audit_logs` to satisfy Kenya Companies Act and Cooperative Societies Act statutory audit standards. |
+
+---
+
+## 2. Master Governance Tagging & Alignment Rules
 
 Every task and architectural decision in this document is classified against the governing engineering baseline:
 - **`[SAD-ALIGNED]`**: Explicitly mandated by the Software Architecture Document (SAD v1.0), Holy Grail Document (HGD Rev 2), or Launch Direction Memo 3. The citation, section number, governing invariant, or ADR is explicitly referenced.
@@ -49,9 +66,9 @@ Every task and architectural decision in this document is classified against the
 
 ---
 
-## 2. Recursive Research Wall: Verbatim Citations Across All Project Documents & PDFs
+## 3. Recursive Research Wall: Verbatim Citations Across All Project Documents & PDFs
 
-### 2.1 Launch Direction & Partner-Licensed Rails (`Baraza-Launch-Direction-Memo-3.pdf`)
+### 3.1 Launch Direction & Partner-Licensed Rails (`Baraza-Launch-Direction-Memo-3.pdf`)
 
 #### Full Verbatim Citations:
 > **Section 2 — What we're launching:**  
@@ -74,7 +91,7 @@ Every task and architectural decision in this document is classified against the
 
 ---
 
-### 2.2 Live Validation & DevOps Constraints (`DevOps Request PDF`)
+### 3.2 Live Validation & DevOps Constraints (`DevOps Request PDF`)
 
 #### Full Verbatim Citations:
 > **Core Architectural Invariant (Why this is required):**  
@@ -99,7 +116,7 @@ Every task and architectural decision in this document is classified against the
 
 ---
 
-### 2.3 Dynamic Activation Pricing & Dues Fee Calculation
+### 3.3 Dynamic Activation Pricing & Dues Fee Calculation
 
 #### A. Source: `Baraza-Protocol-HOLY-GRAIL.md` (Rev 2, Master Ground Truth)
 > **Section 8 — Fee and Commercial Model:**
@@ -129,7 +146,7 @@ Every task and architectural decision in this document is classified against the
 
 ---
 
-### 2.4 Zero-Trust Ingress Security & Invariant I2b
+### 3.4 Zero-Trust Ingress Security & Invariant I2b
 
 #### A. Source: `Baraza Protocol  SAD.md` (Class A & ADR-008)
 > **Section 3.5 — Webhook Authenticity & Fix for Red Team Finding #1:**
@@ -148,7 +165,7 @@ Every task and architectural decision in this document is classified against the
 
 ---
 
-### 2.5 SASRA SACCO Regulatory Compliance Gates (Class G)
+### 3.5 SASRA SACCO Regulatory Compliance Gates (Class G)
 
 #### A. Source: `Baraza-Launch-Direction-Memo-3.pdf` (§6)
 > *"Baraza doesn't obtain a SASRA licence. A SACCO-type community obtains its own and provides proof before that community type activates. What's missing is the mechanism — who checks the proof, what counts as valid, what blocks activation without it. That's what's needed from you."*
@@ -165,7 +182,7 @@ Every task and architectural decision in this document is classified against the
 
 ---
 
-### 2.6 Double-Entry Ledger & Financial Accounting Model (Class A)
+### 3.6 Double-Entry Ledger & Financial Accounting Model (Class A)
 
 #### A. Source: `Baraza Protocol  SAD.md` (§3.5 Class A)
 > **Ledger Data Model (Double-Entry):**
@@ -189,9 +206,9 @@ Every task and architectural decision in this document is classified against the
 
 ---
 
-## 3. Mathematical Formulations & Economic Invariants
+## 4. Mathematical Formulations & Economic Invariants
 
-### 3.1 Total Expected Inbound Dues Formula
+### 4.1 Total Expected Inbound Dues Formula
 For any dues or activation payment of base amount $A_{\text{base}}$ (in minor units, e.g. cents/cents):
 
 $$\text{PlatformFee} = \text{RoundHalfUp}\left(A_{\text{base}} \times 0.020\right)$$
@@ -200,7 +217,14 @@ $$\text{CarrierCost} = \begin{cases} 0 & \text{if } A_{\text{base}} < 20000 \tex
 
 $$\text{TotalExpected} = A_{\text{base}} + \text{PlatformFee} + \text{CarrierCost}$$
 
-### 3.2 Double-Entry Split Conservation
+### 4.2 Outbound Vault Disbursement Formula (Locked Decision 2)
+For any outbound community treasury disbursement of amount $D_{\text{amount}}$:
+
+$$\text{DisbursementPlatformFee} = 0 \quad \text{(0\% platform fee on disbursements)}$$
+
+$$\text{DisbursementNetReceived} = D_{\text{amount}} - \text{GasOrProviderPassThroughCost}$$
+
+### 4.3 Double-Entry Split Conservation
 On successful settlement of $\text{TotalExpected}$:
 1. **Member Credit:** Credit $\text{member}:\langle\text{user\_id}\rangle$ with $A_{\text{base}}$
 2. **Community Treasury Vault Debit:** Debit $\text{treasury}:\langle\text{community\_id}\rangle$ with $A_{\text{base}}$
@@ -211,7 +235,7 @@ $$\sum \text{Debits} = A_{\text{base}} + \text{PlatformFee} + \text{CarrierCost}
 
 ---
 
-## 4. Master Scope of Work by Subsystem (Sections A through H)
+## 5. Master Scope of Work by Subsystem (Sections A through H)
 
 ### Section A: Smart Contracts & On-Chain Settlement Subsystem
 
@@ -226,14 +250,14 @@ $$\sum \text{Debits} = A_{\text{base}} + \text{PlatformFee} + \text{CarrierCost}
   3. Deploy to Stellar Mainnet and update `contracts/stellar/addresses/mainnet.json` and `app/src/lib/programs/stellarAddresses.ts`.
   4. Perform testnet-to-mainnet drift smoke tests via `npm run test:contracts:drift`.
 
-#### A.2 Multi-Sig Payment Attestation Service Writer Authorization
+#### A.2 Cloud KMS-Backed Multi-Sig Payment Attestation Service (Locked Decision 4)
 - **Classification:** `[SAD-ALIGNED]` (SAD §5.4, ADR-009, Red Team Finding #2)
-- **Current Completion:** **70%** (`payment_attestation` contract requires admin authorization; single-signer server client written in `stellar-mint.ts`).
-- **Why it Aligns:** Prevents a single compromised Vercel server key from forging on-chain fiat payment receipts.
+- **Current Completion:** **70%** (`payment_attestation` contract written; server client written in `stellar-mint.ts`).
+- **Why it Aligns:** Prevents server compromise from forging on-chain fiat payment receipts.
 - **Target Files (from Code Map):** `contracts/stellar/payment_attestation/src/lib.rs`, `app/api/cron/_lib/stellar-mint.ts`
 - **Pending Scope of Work:**
   1. Upgrade `PaymentAttestationContract` to store an authorized signers list `Vec<Address>` and require 2 distinct cryptographic signatures for `attest()`.
-  2. Refactor `app/api/cron/_lib/stellar-mint.ts` to coordinate dual-signing across two independent key custody sources.
+  2. Refactor `app/api/cron/_lib/stellar-mint.ts` to invoke Cloud KMS (AWS KMS / GCP Cloud KMS HSM) for cryptographic asymmetric transaction signing.
 
 #### A.3 Base EVM / Aragon OSx Adapter Isolation
 - **Classification:** `[SAD-ALIGNED]` (SAD §2, ADR-001, Roadmap M7)
@@ -245,7 +269,7 @@ $$\sum \text{Debits} = A_{\text{base}} + \text{PlatformFee} + \text{CarrierCost}
 
 ---
 
-### Section B: Zero-Trust Payment Ingress, Partner Rails & Fee Engine
+### Section B: Multi-Provider Payment Ingress (Kotani, Daraja, Paystack, Minisend)
 
 #### B.1 Dynamic Activation Pricing & Calculation Engine
 - **Classification:** `[SAD-ALIGNED]` (Launch Memo 3 §4, Holy Grail §14)
@@ -258,15 +282,17 @@ $$\sum \text{Debits} = A_{\text{base}} + \text{PlatformFee} + \text{CarrierCost}
      $$\text{TotalExpected} = \text{ActivationFee} + \text{PlatformFee}(2.0\%) + \text{ProviderFee}(0.5\% \text{ capped at 200 KES})$$
   3. Validate that zero-fee / free communities bypass payment gates gracefully.
 
-#### B.2 Partner-Licensed Mobile Money Rails (Kotani Pay & Minisend)
+#### B.2 Multi-Rail Payment Adapters (Locked Decision 1)
 - **Classification:** `[SAD-ALIGNED]` (Launch Memo 3 §3, Addendum 2, HGD §13)
-- **Current Completion:** **60%** (`payments/kotani.ts` and `payments/minisend.ts` proxy routes created; live checkout call sites need wiring).
-- **Why it Aligns:** Launch Memo 3 explicitly mandates: *"We're not applying for our own Daraja production account for launch. Payments route through providers who already hold the licences — Kotani, Minisend, Qardi and others."*
-- **Target Files (from Code Map):** `app/api/payments/kotani.ts`, `app/api/payments/minisend.ts`, `app/api/webhooks/kotani.ts`
+- **Current Completion:** **60%** (`payments/kotani.ts` and `payments/minisend.ts` proxy routes created).
+- **Why it Aligns:** Ensures maximum payment coverage across Africa via multiple licensed gateways.
+- **Target Files (from Code Map):** `app/api/payments/`, `app/api/webhooks/`
 - **Pending Scope of Work:**
-  1. Implement live STK Push trigger in `payments/kotani.ts` calling `/v1/onramp/stellar`.
-  2. Connect `webhooks/kotani.ts` to verify `KOTANI_WEBHOOK_SECRET` signature, match order by reference, and transition status to `ATTESTATION_SUBMITTED`.
-  3. Implement Minisend off-ramp caller in `payments/minisend.ts` for automated treasury payouts.
+  1. **Kotani Pay (Default Primary):** Wire live `/v1/onramp/stellar` STK trigger and webhook verification.
+  2. **Direct Safaricom Daraja:** Implement production `packages/integrations/src/daraja.ts` STK push caller and async `transactionstatus/v1/query` verification.
+  3. **Paystack Integration (Pan-African):** Create `app/api/payments/paystack.ts` and `app/api/webhooks/paystack.ts` supporting Cards, Bank Transfers, and M-Pesa.
+  4. **Minisend Off-Ramp:** Implement USDC liquidation caller in `payments/minisend.ts` for automated community disbursements.
+  5. **Africa's Talking:** Telecom SMS alerts and USSD session support.
 
 #### B.3 Dual-Layer Webhook Ingress Security
 - **Classification:** `[SAD-ALIGNED]` (SAD §5.2, Invariant I3a, Red Team Finding #1)
@@ -286,12 +312,13 @@ $$\sum \text{Debits} = A_{\text{base}} + \text{PlatformFee} + \text{CarrierCost}
 - **Pending Scope of Work:**
   1. Create database migration `025_double_entry_ledger.sql` with table `ledger_entries (id, order_id, account_id, debit_amount, credit_amount, currency, created_at)`.
   2. Create atomic stored procedure `record_double_entry_split()` to record member contribution credit, treasury vault debit, and 2% platform fee allocation in a single ACID transaction.
+  3. Enforce **7-year statutory retention policy** on financial tables (Locked Decision 7).
 
 ---
 
 ### Section D: SASRA & Regulatory Compliance Subsystem (Class G)
 
-#### D.1 SASRA SACCO License Verification Gate
+#### D.1 SASRA SACCO License Verification Gate (Locked Decision 3)
 - **Classification:** `[SAD-ALIGNED]` (Launch Memo 3 §6, SAD §3.6 Class G, HGD §9a, ADR-006)
 - **Current Completion:** **20%** (Principle documented; endpoints and database constraints pending).
 - **Why it Aligns:** Launch Memo 3 states: *"Baraza doesn't obtain a SASRA licence. A SACCO-type community obtains its own and provides proof before that community type activates."*
@@ -309,7 +336,7 @@ $$\sum \text{Debits} = A_{\text{base}} + \text{PlatformFee} + \text{CarrierCost}
 - **Pending Scope of Work:**
   1. Create daily background query in `app/api/cron/monitor-compliance.ts` flagging groups exceeding KES 100M.
 
-#### D.3 ODPC Personal Data Inventory for BAD DAO AFRICA LIMITED
+#### D.3 ODPC Personal Data Inventory for BAD DAO AFRICA LIMITED (Locked Decision 6)
 - **Classification:** `[SAD-ALIGNED]` (Launch Memo 3 §5, SAD §3.6, Kenya DPA 2019 §18)
 - **Current Completion:** **90%** (Code hashes phone numbers with `PAYMENT_PHONE_HASH_PEPPER`; filing inventory document pending).
 - **Pending Scope of Work:**
@@ -317,7 +344,7 @@ $$\sum \text{Debits} = A_{\text{base}} + \text{PlatformFee} + \text{CarrierCost}
 
 ---
 
-### Section E: Conversational Bot Engine & WhatsApp Gateway (ADR-007)
+### Section E: Conversational Bot Engine & WhatsApp Gateway Roadmap (Locked Decision 5)
 
 #### E.1 Natural Language Sheng, Swahili & English Slot Parser
 - **Classification:** `[SAD-ALIGNED]` (SAD §7.3, ADR-007, HGD §17)
@@ -326,7 +353,9 @@ $$\sum \text{Debits} = A_{\text{base}} + \text{PlatformFee} + \text{CarrierCost}
 - **Target Files (from Code Map):** `app/src/lib/bot/fsm.ts`, `evolution-api/src/webhook.ts`
 - **Pending Scope of Work:**
   1. Add Sheng slang affirmative tokens (`"rada"`, `"ni poa"`, `"wazi"`, `"chapa"`, `"soo tano"`) to `fsm.ts`.
-  2. Wire fallback ladder: Turn 1–2 (Clarification) $\to$ Turn 3 (Stateless LLM Rephrase) $\to$ Turn 4 (Human Admin Alert).
+  2. Implement WhatsApp Provider Adapter interface:
+     - `EvolutionApiProvider` for local dev/testing (`evolution-api`).
+     - `MetaCloudApiProvider` for production deployment with HMAC-SHA256 signature verification.
 
 ---
 
@@ -347,72 +376,67 @@ $$\sum \text{Debits} = A_{\text{base}} + \text{PlatformFee} + \text{CarrierCost}
 
 #### G.1 Member Profile, Preferences & Identity Continuity
 - **Classification:** `[PROPOSED]`
-- **Engineering Rationale:** Essential for production SaaS account management, allowing members to manage profiles, language preferences (English/Swahili/Sheng), and notification routing without exposing raw on-chain data. Replaces scattered localStorage stubs in `Profile.tsx` and `phoneAuth.ts`.
+- **Engineering Rationale:** Essential for production SaaS account management, allowing members to manage profiles, language preferences (English/Swahili/Sheng), and notification routing without exposing raw on-chain data.
 - **Target Files (from Code Map):** `app/api/user/profile.ts`, `app/api/user/memberships.ts`, `supabase/migrations/`
 - **Pending Scope of Work:**
-  1. `GET /api/user/profile` — Fetch current user profile, linked wallets, verified phone status, and notification preferences.
-  2. `PATCH /api/user/profile` — Update display name, avatar URL, bio, preferred locale (`en` | `sw` | `sheng`), country (`KE`, `UG`, `TZ`, `RW`), and default currency.
-  3. `GET /api/user/memberships` — Return all active community memberships, officer roles, dues status, and voting power for the authenticated user.
-  4. `POST /api/user/avatar-upload` — Generate presigned upload URL for member avatars in Supabase Storage (`avatars` bucket).
+  1. `GET /api/user/profile` — Fetch profile, linked wallets, verified phone status, locale preferences.
+  2. `PATCH /api/user/profile` — Update display name, avatar URL, bio, preferred locale (`en` | `sw` | `sheng`), country, default currency.
+  3. `GET /api/user/memberships` — Return active memberships, officer roles, dues status, voting power.
+  4. `POST /api/user/avatar-upload` — Presigned upload URL for Supabase Storage (`avatars` bucket).
 
 #### G.2 Push Notifications & Multi-Channel Messaging Subscriptions
 - **Classification:** `[PROPOSED]`
-- **Engineering Rationale:** Community governance, voting deadlines, and dues collection rely heavily on timely member nudges. Members in emerging markets switch between Web Push, SMS, and WhatsApp based on connectivity.
+- **Engineering Rationale:** Community governance, voting deadlines, and dues collection rely heavily on timely member nudges across Web Push, SMS, and WhatsApp.
 - **Target Files (from Code Map):** `app/api/user/notifications/`, `app/src/lib/notifications/`
 - **Pending Scope of Work:**
-  1. `POST /api/user/notifications/push-subscribe` — Register Web Push / FCM browser push subscription tokens for real-time mobile and desktop alerts.
-  2. `GET/PATCH /api/user/notifications/preferences` — Granular channel toggle matrix (`sms`, `whatsapp`, `push`, `email`) for:
-     - New proposal created in joined community
-     - Voting deadline reminder (24h before proposal closes)
-     - Dues cycle payment reminder (3 days before monthly due date)
-     - Dues payment confirmation & on-chain receipt notification
-     - Treasury multisig payout signature requests for elected officers
-  3. `POST /api/notifications/dispatch` — Internal queue worker delivering scheduled alerts via Africa's Talking SMS, Evolution WhatsApp API, and Web Push.
+  1. `POST /api/user/notifications/push-subscribe` — Register Web Push / FCM browser push subscription tokens.
+  2. `GET/PATCH /api/user/notifications/preferences` — Granular channel toggles (`sms`, `whatsapp`, `push`, `email`).
+  3. `POST /api/notifications/dispatch` — Internal queue worker delivering scheduled alerts.
 
 #### G.3 Community Workspace Features (Roadmaps, Suggestions & Bounties)
 - **Classification:** `[PROPOSED]`
-- **Engineering Rationale:** Replaces frontend `localStorage` mock implementations in `CommunityRoadmap.tsx`, `CommunitySuggestions.tsx`, and `BountyBoard.tsx` with durable, multi-user database persistence.
+- **Engineering Rationale:** Replaces frontend `localStorage` mock implementations in `CommunityRoadmap.tsx`, `CommunitySuggestions.tsx`, and `BountyBoard.tsx` with durable database persistence.
 - **Target Files (from Code Map):** `app/api/communities/[id]/`, `supabase/migrations/`
 - **Pending Scope of Work:**
-  1. `GET/POST /api/communities/[id]/roadmap` — List and create community roadmap milestones (`title`, `description`, `target_date`, `status`, `funding_goal_kes`).
-  2. `PATCH/DELETE /api/communities/[id]/roadmap/[milestoneId]` — Update or delete milestone (Admin/Officer only).
-  3. `GET/POST /api/communities/[id]/suggestions` — Member suggestion box for bottom-up community proposals and feedback.
+  1. `GET/POST /api/communities/[id]/roadmap` — List and create community roadmap milestones.
+  2. `PATCH/DELETE /api/communities/[id]/roadmap/[milestoneId]` — Update or delete milestone (Admin only).
+  3. `GET/POST /api/communities/[id]/suggestions` — Member suggestion box for bottom-up proposals.
   4. `POST /api/communities/[id]/suggestions/[suggestionId]/vote` — Upvote/downvote suggestions.
   5. `GET/POST /api/communities/[id]/bounties` — Community task and micro-bounty board management.
-  6. `POST /api/bounties/[id]/apply` & `POST /api/bounties/[id]/submit` — Member application and work submission for community bounties.
+  6. `POST /api/bounties/[id]/apply` & `POST /api/bounties/[id]/submit` — Member bounty workflows.
 
 #### G.4 Community Management, Invitations & Access Control
 - **Classification:** `[PROPOSED]`
 - **Engineering Rationale:** Group founders and admins need tools to manage membership rosters, track invite links, and assign leadership roles.
 - **Target Files (from Code Map):** `app/api/communities/[id]/`
 - **Pending Scope of Work:**
-  1. `GET/PATCH /api/communities/[id]/settings` — Update community metadata (description, logo, rules, privacy mode: `public` vs `private_invite_only`).
-  2. `POST /api/communities/[id]/invites` — Generate trackable member referral/invite link with expiration and max uses.
-  3. `GET /api/communities/[id]/members` — Search and filter member roster (by `active`, `overdue_dues`, `role`), with pagination and CSV export.
+  1. `GET/PATCH /api/communities/[id]/settings` — Update community metadata and privacy mode.
+  2. `POST /api/communities/[id]/invites` — Generate trackable member referral/invite link.
+  3. `GET /api/communities/[id]/members` — Search and filter member roster with CSV export.
   4. `POST /api/communities/[id]/officers` — Assign and revoke group officer roles (Chairperson, Treasurer, Secretary).
 
 #### G.5 Accounting Statements, Tax Receipts & Financial Exports
 - **Classification:** `[PROPOSED]`
-- **Engineering Rationale:** Group treasurers, SACCO committee members, and auditors require downloadable accounting statements for local tax and statutory record-keeping.
+- **Engineering Rationale:** Group treasurers, SACCO committee members, and auditors require downloadable accounting statements for local statutory record-keeping.
 - **Pending Scope of Work:**
-  1. `GET /api/communities/[id]/statement` — Export community double-entry ledger entries to CSV or PDF for custom date ranges.
-  2. `GET /api/user/receipt/[orderId]` — Generate downloadable PDF payment receipt for member dues contributions.
+  1. `GET /api/communities/[id]/statement` — Export community double-entry ledger entries to CSV or PDF.
+  2. `GET /api/user/receipt/[orderId]` — Downloadable PDF payment receipt for member dues contributions.
 
 #### G.6 Disputes, Refund Requests & Audit Logs
 - **Classification:** `[PROPOSED]`
-- **Engineering Rationale:** Provides operational resolution paths for payment mismatches (`payment_orders.status = 'MANUAL_REVIEW'`) and immutable regulatory audit trails.
+- **Engineering Rationale:** Provides operational resolution paths for payment mismatches and immutable regulatory audit trails.
 - **Pending Scope of Work:**
-  1. `POST /api/payment-orders/[id]/dispute` — Member submits dispute reason / proof for stalled or mismatched payments.
-  2. `GET /api/communities/[id]/audit-log` — Tamper-evident, append-only audit trail of officer and admin actions (mandated for SASRA/ODPC compliance).
-  3. `POST /api/support/ticket` — Submit support ticket with automated Akili AI diagnostics and human escalation.
+  1. `POST /api/payment-orders/[id]/dispute` — Member submits dispute reason / proof for stalled payments.
+  2. `GET /api/communities/[id]/audit-log` — Tamper-evident audit trail of officer and admin actions.
+  3. `POST /api/support/ticket` — Submit support ticket with automated Akili AI diagnostics.
 
 #### G.7 Health, Readiness & Observability Endpoints
 - **Classification:** `[PROPOSED]`
-- **Engineering Rationale:** Mandatory for production uptime monitoring (Better Uptime, Datadog, Vercel synthetic checks) and zero-downtime deployments.
+- **Engineering Rationale:** Mandatory for production uptime monitoring and zero-downtime deployments.
 - **Pending Scope of Work:**
   1. `GET /api/health/live` — Lightweight liveness probe returning HTTP 200 `{ status: "ok" }`.
-  2. `GET /api/health/ready` — Deep readiness probe validating database connectivity, Horizon RPC responsiveness, and partner payment gateway health.
-  3. `GET /api/health/metrics` — Metrics probe returning queue depth, attestation latency, and error counts.
+  2. `GET /api/health/ready` — Deep readiness probe validating DB, Stellar Horizon, and payment gateways.
+  3. `GET /api/health/metrics` — Metrics probe returning queue depth, attestation latency, error counts.
 
 #### G.8 Token-Bucket Rate Limiting & Abuse Prevention Middleware
 - **Classification:** `[PROPOSED]`
@@ -427,20 +451,19 @@ $$\sum \text{Debits} = A_{\text{base}} + \text{PlatformFee} + \text{CarrierCost}
 #### H.1 Automated Soroban Contract Event Indexer (Decoupled Worker)
 - **Classification:** `[PROPOSED]`
 - **Engineering Rationale:** Prevents cache drift between Supabase and Stellar if an HTTP connection drops during contract invocation (ADR-003).
-- **Proposal:** Deploy a lightweight background worker consuming Stellar RPC ingestion streams to automatically sync contract events into Supabase asynchronously.
 
 #### H.2 Intelligent Multi-Provider Payment Fallback Router
 - **Classification:** `[PROPOSED]`
-- **Engineering Rationale:** Mitigates carrier downtime by automatically routing payments:
-  $$\text{Primary: Kotani Pay} \xrightarrow{\text{Failover}} \text{Minisend} \xrightarrow{\text{Failover}} \text{Direct Daraja} \xrightarrow{\text{Fallback}} \text{Crypto Deposit}$$
+- **Engineering Rationale:** Automatically executes the multi-rail failover ladder:
+  $$\text{Primary: Kotani Pay} \xrightarrow{\text{Failover}} \text{Paystack} \xrightarrow{\text{Failover}} \text{Direct Daraja} \xrightarrow{\text{Failover}} \text{Minisend} \xrightarrow{\text{Fallback}} \text{Crypto Deposit}$$
 
-#### H.3 Hardware-Backed Key Management (Cloud KMS)
-- **Classification:** `[PROPOSED]`
-- **Engineering Rationale:** Enhances Tier 3 custody security by replacing environment variable private keys with AWS KMS / GCP Cloud KMS HSM-backed signing.
+#### H.3 Hardware-Backed Key Management (Cloud KMS — Locked Decision 4)
+- **Classification:** `[SAD-ALIGNED]`
+- **Engineering Rationale:** Upgrades attestation signer security using AWS KMS / GCP Cloud KMS HSM modules.
 
 ---
 
-## 5. Step-by-Step Technical Implementation Plan (Phased Sprints P1–P8)
+## 6. Step-by-Step Technical Implementation Plan (Phased Sprints P1–P8)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -448,34 +471,20 @@ $$\sum \text{Debits} = A_{\text{base}} + \text{PlatformFee} + \text{CarrierCost}
 ├─────────┬──────────────────────────────────────────┬────────────────┬───────────────┬──────────────────┤
 │ Phase   │ Feature / Subsystem                      │ Classification │ Current State │ Target Timeline  │
 ├─────────┼──────────────────────────────────────────┼────────────────┼───────────────┼──────────────────┤
-│ **P1**  │ Dynamic Fee Engine + Kotani/Minisend     │ `[SAD-ALIGNED]`│ 40% Complete  │ Sprint 1 (Days 1-5│
+│ **P1**  │ Dynamic Fee Engine + Kotani/Paystack     │ `[SAD-ALIGNED]`│ 40% Complete  │ Sprint 1 (Days 1-5│
 │ **P2**  │ SASRA Sacco License Verification Gate    │ `[SAD-ALIGNED]`│ 20% Complete  │ Sprint 1 (Days 3-7│
-│ **P3**  │ Soroban Mainnet Deploy + 2-of-N Attest   │ `[SAD-ALIGNED]`│ 90% Complete  │ Sprint 2 (Days 8-12│
+│ **P3**  │ Soroban Mainnet Deploy + KMS Attestation │ `[SAD-ALIGNED]`│ 90% Complete  │ Sprint 2 (Days 8-12│
 │ **P4**  │ Double-Entry Ledger + Cron Reconciler    │ `[SAD-ALIGNED]`│ 60% Complete  │ Sprint 2 (Days 10-14│
 │ **P5**  │ Core SaaS: Profile, Push, Settings       │ `[PROPOSED]`   │ 30% Complete  │ Sprint 3 (Days 15-18│
 │ **P6**  │ Workspace: Roadmap, Suggestions, Bounties│ `[PROPOSED]`   │ 20% Complete  │ Sprint 3 (Days 17-20│
 │ **P7**  │ Health, Observability, Rate Limiting     │ `[PROPOSED]`   │ 25% Complete  │ Sprint 4 (Days 20-22│
-│ **P8**  │ Event Indexer + KMS HSM Key Custody      │ `[PROPOSED]`   │ 10% Complete  │ Sprint 4 (Days 22-25│
+│ **P8**  │ Event Indexer + Meta WhatsApp Migration  │ `[PROPOSED]`   │ 10% Complete  │ Sprint 4 (Days 22-25│
 └─────────┴──────────────────────────────────────────┴────────────────┴───────────────┴──────────────────┘
 ```
 
-### Phase P1 Immediate Tasks:
-1. **Migration `024_communities_dynamic_activation_fee.sql`:**
-   - `activation_fee_minor BIGINT NOT NULL DEFAULT 0`
-   - `fee_type TEXT NOT NULL DEFAULT 'one_time' CHECK (fee_type IN ('one_time', 'recurring_monthly', 'free'))`
-   - `carrier_pass_through BOOLEAN NOT NULL DEFAULT true`
-2. **Centralized Fee Utility (`app/src/lib/payments/feeEngine.ts`):**
-   - Pure, deterministic calculation of 2% platform fee, carrier pass-through, and zero-fee bypass.
-3. **Intent Generator (`app/api/stellar/create-payment-intent.ts`):**
-   - Dynamic fee breakdown & HMAC signature binding.
-4. **Partner Rail Checkout Wiring (`app/api/payments/kotani.ts` & `app/api/webhooks/kotani.ts`):**
-   - Live on-ramp STK prompt caller and webhook signature verifier.
-5. **Frontend Pre-Transaction Disclosure (`JoinDao.tsx`, `CreateCommunity.tsx`):**
-   - Transparent itemized fee breakdown before payment prompt.
-
 ---
 
-## 6. Verification Plan & Acceptance Test Scenarios
+## 7. Verification Plan & Acceptance Test Scenarios
 
 ### Automated Tests (`app/src/lib/__tests__/feeEngine.test.ts`)
 1. **Zero-Fee Communities:** Base 0 KES $\to$ Total 0 KES, bypasses STK push.
@@ -491,6 +500,8 @@ $$\sum \text{Debits} = A_{\text{base}} + \text{PlatformFee} + \text{CarrierCost}
    - Total = 10,220,000 cents (KES 102,200)
 4. **Rounding Precision Check:** Verifies integer math never introduces fractional cents.
 
-### Live Integration Tests
+### Live Multi-Rail Integration Tests
 - Verify Kotani Pay sandbox on-ramp request succeeds with mock phone `254708374149`.
+- Verify Paystack checkout initialization and webhook signature verification (`x-paystack-signature`).
+- Verify Daraja async Transaction Status Query transition.
 - Verify webhook transitions order status idempotently without double-charging.
