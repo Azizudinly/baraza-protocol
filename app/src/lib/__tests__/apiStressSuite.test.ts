@@ -760,9 +760,9 @@ describe('Database-Integrated Real HTTP Stress & Correctness Suite', () => {
       const data = await webhookRes.json() as Record<string, unknown>;
       expect(data.error).toBe('underpayment_detected');
 
-      // Verify order transitioned to SUSPENSE_UNDERPAID
+      // Verify order transitioned to AMOUNT_MISMATCH (Postgres check constraint safe)
       const order = db.paymentOrders.get(orderId);
-      expect(order?.status).toBe('SUSPENSE_UNDERPAID');
+      expect(order?.status).toBe('AMOUNT_MISMATCH');
     });
 
     it('dynamically computes amountXlm when omitted from payment intent request (Invariant 5)', async () => {

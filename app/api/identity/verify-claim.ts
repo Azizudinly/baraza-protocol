@@ -174,6 +174,48 @@ export default async function handler(req: Request): Promise<Response> {
     return json({ error: 'link_write_failed' }, { status: 502 });
   }
 
+  // Migrate memberships associated with this phone_hash to the new wallet_address (Stakeholder Decision 4)
+  try {
+    const memRes = await fetch(
+      `${supabaseUrl}/rest/v1/memberships?user_id_hash=eq.${encodeURIComponent(verdict.phoneHash)}&status=in.(PENDING,ACTIVE)`,
+      { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } },
+    );
+    if (memRes.ok) {
+      const memRows = (await memRes.json().catch(() => [])) as Array<{ member_id: string; community_id: string; wallet_address: string }>;
+      for (const m of memRows) {
+        if (m.wallet_address === verdict.walletAddress) continue;
+        const targetRes = await fetch(
+          `${supabaseUrl}/rest/v1/memberships?community_id=eq.${encodeURIComponent(m.community_id)}&wallet_address=eq.${encodeURIComponent(verdict.walletAddress)}&status=in.(PENDING,ACTIVE)&limit=1`,
+          { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } },
+        );
+        if (targetRes.ok) {
+          const targets = (await targetRes.json().catch(() => [])) as Array<{ member_id: string }>;
+          if (targets.length > 0) {
+            await fetch(
+              `${supabaseUrl}/rest/v1/memberships?member_id=eq.${encodeURIComponent(m.member_id)}`,
+              {
+                method: 'PATCH',
+                headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'content-type': 'application/json' },
+                body: JSON.stringify({ status: 'MIGRATED', migrated_to: targets[0].member_id }),
+              },
+            ).catch(() => undefined);
+          } else {
+            await fetch(
+              `${supabaseUrl}/rest/v1/memberships?member_id=eq.${encodeURIComponent(m.member_id)}`,
+              {
+                method: 'PATCH',
+                headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'content-type': 'application/json' },
+                body: JSON.stringify({ wallet_address: verdict.walletAddress }),
+              },
+            ).catch(() => undefined);
+          }
+        }
+      }
+    }
+  } catch {
+    // Non-fatal
+  }
+
   await fetch(
     `${supabaseUrl}/rest/v1/identity_claim_pending?id=eq.${encodeURIComponent(row.id)}`,
     {

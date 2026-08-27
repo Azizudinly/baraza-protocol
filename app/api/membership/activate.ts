@@ -245,7 +245,7 @@ export default async function handler(req: Request): Promise<Response> {
   const effectiveAddress = body.walletAddress ?? body.phoneIdentifier!;
 
   // ─── Free Community Instant Bypass Path ──────────────────────────────
-  if (body.orderId === 'free_activation') {
+  if (body.orderId === 'free_activation' || body.orderId.startsWith('ord_free_')) {
     const isFree = await verifyCommunityIsFree(url, serviceKey, body.communityId);
     if (!isFree) {
       return bad('This community requires activation payment dues.', 403);
@@ -270,7 +270,7 @@ export default async function handler(req: Request): Promise<Response> {
       community_id: body.communityId,
       user_id_hash: userIdHash,
       wallet_address: effectiveAddress,
-      payment_order_id: 'free_activation',
+      payment_order_id: body.orderId,
     });
 
     if (!result.ok && !result.duplicate) {

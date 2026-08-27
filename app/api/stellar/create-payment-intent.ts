@@ -181,9 +181,13 @@ export default async function handler(req: Request): Promise<Response> {
   // Derive dynamic XLM amount: (totalKES / 130) / xlmUsdRate
   const kesUsdRate = 1 / 130;
   const derivedXlm = Number(((feeBreakdown.totalExpectedMinor / 100) * kesUsdRate / xlmUsdRate).toFixed(4));
-  const amountXlm = Number.isFinite(body.amountXlm) && (body.amountXlm ?? 0) > 0
-    ? (body.amountXlm as number)
-    : Math.max(0.1, derivedXlm);
+  const minRequiredXlm = Math.max(0.1, derivedXlm);
+
+  // Zero-trust client input: ignore arbitrary sub-rate discounts.
+  // Only accept client override if it is a genuine overpayment (>= 99.5% of derived amount).
+  const amountXlm = (typeof body.amountXlm === 'number' && Number.isFinite(body.amountXlm) && body.amountXlm >= minRequiredXlm * 0.995)
+    ? Number(body.amountXlm.toFixed(4))
+    : minRequiredXlm;
 
   const nonce = base64url(crypto.getRandomValues(new Uint8Array(12)));
   const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();

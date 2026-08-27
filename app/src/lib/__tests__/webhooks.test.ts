@@ -55,8 +55,10 @@ describe('Shipped Webhook Handlers Verification Suite', () => {
     it('accepts authentic HMAC-SHA256 signature on real Kotani handler', async () => {
       const payload = JSON.stringify({
         event: 'transfer.success',
+        status: 'completed',
         reference: 'ord_123',
         amount: 512.50,
+        currency: 'KES',
       });
       const sig = await generateKotaniSignature(payload, kotaniSecret);
       const req = new Request('https://barazaprotocol.com/api/webhooks/kotani', {
@@ -68,7 +70,7 @@ describe('Shipped Webhook Handlers Verification Suite', () => {
         body: payload,
       });
       const res = await kotaniWebhookHandler(req);
-      expect([200, 400, 500]).toContain(res.status);
+      expect(res.status).toBe(200);
     });
   });
 
@@ -119,8 +121,7 @@ describe('Shipped Webhook Handlers Verification Suite', () => {
         body: payload,
       });
       const res = await paystackWebhookHandler(req);
-      // Returns 200 or 500 (if DB unconfigured in isolated unit test), but signature verification succeeds!
-      expect([200, 500]).toContain(res.status);
+      expect(res.status).toBe(200);
     });
   });
 });

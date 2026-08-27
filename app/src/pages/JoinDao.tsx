@@ -91,7 +91,6 @@ export default function JoinDao() {
   const { toast } = useToast();
   const [phone, setPhone] = useState("");
   const [stellarTxHash, setStellarTxHash] = useState("");
-  const [stellarAmountXlm, setStellarAmountXlm] = useState("1");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isVerifyingStellar, setIsVerifyingStellar] = useState(false);
   const [pendingWalletJoin, setPendingWalletJoin] = useState(false);
@@ -99,12 +98,11 @@ export default function JoinDao() {
   const amount = community?.membershipFee ?? 0;
   const feeBreakdown = calculateDynamicFee(amount * 100, 'KES', true);
   const isFree = feeBreakdown.isFree;
+  const estimatedXlm = Number(((feeBreakdown.totalExpectedMinor / 100) * (1 / 130) / 0.10).toFixed(4));
 
   const normalisedPhone = normaliseKenyanPhone(phone);
   const canSubmit = (isFree || (normalisedPhone !== null && amount > 0)) && !isSubmitting;
-  const canVerifyStellar = /^[a-f0-9]{64}$/i.test(stellarTxHash.trim()) &&
-    Number(stellarAmountXlm) > 0 &&
-    !isVerifyingStellar;
+  const canVerifyStellar = /^[a-f0-9]{64}$/i.test(stellarTxHash.trim()) && !isVerifyingStellar;
 
   function startAccountJoin(accountId: string) {
     if (!id) return;
@@ -127,15 +125,17 @@ export default function JoinDao() {
     if (!id || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const walletAddress = account.accountId || `phone:${phone || 'anon'}`;
+      const walletAddress = account.accountId || (phone ? `phone:${phone}` : `phone:anon_${crypto.randomUUID()}`);
+      const freeOrderId = `ord_free_${id}_${Date.now().toString(36)}_${crypto.randomUUID().slice(0, 8)}`;
+      const freeSecret = `sec_free_${crypto.randomUUID()}`;
       const res = await fetch("/api/membership/activate", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          orderId: "free_activation",
+          orderId: freeOrderId,
           communityId: id,
           walletAddress,
-          activationSecret: "free_activation_secret",
+          activationSecret: freeSecret,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; message?: string };
@@ -199,7 +199,7 @@ export default function JoinDao() {
       title: usedFallback ? "Simulator unreachable - using local order" : "M-Pesa prompt sent",
       description: usedFallback
         ? "Run \"vercel dev\" to exercise the real /api/mpesa/simulate endpoint."
-        : `Enter your M-Pesa PIN on your phone to confirm KSh ${formatKSh(feeBreakdown.totalExpectedMinor / 100)}.`,
+        : `Enter your M-Pesa PIN on your phone to confirm ${formatKSh(feeBreakdown.totalExpectedMinor / 100)}.`,
     });
 
     setIsSubmitting(false);
@@ -219,7 +219,6 @@ export default function JoinDao() {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             communityId: id,
-            amountXlm: Number(stellarAmountXlm),
             amountKes: amount,
             environment: PRODUCT_ENVIRONMENT,
           }),
@@ -241,7 +240,6 @@ export default function JoinDao() {
             : {
                 communityId: id,
                 txHash: stellarTxHash.trim().toLowerCase(),
-                amountXlm: Number(stellarAmountXlm),
                 environment: PRODUCT_ENVIRONMENT,
               },
         ),
@@ -321,21 +319,21 @@ export default function JoinDao() {
                   <div className="grid gap-2 text-xs sm:text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Base Community Dues</span>
-                      <span className="font-medium">KSh {formatKSh(feeBreakdown.baseAmountMinor / 100)}</span>
+                      <span className="font-medium">{formatKSh(feeBreakdown.baseAmountMinor / 100)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Baraza Platform Fee (2.0%)</span>
-                      <span className="font-medium">KSh {formatKSh(feeBreakdown.platformFeeMinor / 100)}</span>
+                      <span className="font-medium">{formatKSh(feeBreakdown.platformFeeMinor / 100)}</span>
                     </div>
                     {feeBreakdown.carrierCostMinor > 0 && (
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Carrier Processing Cost (0.5% capped)</span>
-                        <span className="font-medium">KSh {formatKSh(feeBreakdown.carrierCostMinor / 100)}</span>
+                        <span className="font-medium">{formatKSh(feeBreakdown.carrierCostMinor / 100)}</span>
                       </div>
                     )}
                     <div className="border-t pt-2 flex justify-between font-semibold text-sm">
                       <span>Total Expected Payment</span>
-                      <span className="text-primary font-bold">KSh {formatKSh(feeBreakdown.totalExpectedMinor / 100)}</span>
+                      <span className="text-primary font-bold">{formatKSh(feeBreakdown.totalExpectedMinor / 100)}</span>
                     </div>
                   </div>
                 </div>
@@ -414,15 +412,12 @@ export default function JoinDao() {
                     Paste the transaction reference supplied by your transfer provider. Baraza verifies it before activating membership.
                   </p>
 
-                  <label htmlFor="stellar-amount" className="mb-2 mt-4 block text-xs font-semibold">Transfer amount reference</label>
-                  <input
-                    id="stellar-amount"
-                    value={stellarAmountXlm}
-                    onChange={(event) => setStellarAmountXlm(event.target.value)}
-                    className="w-full rounded-lg border px-3 py-3 text-sm outline-none"
-                    inputMode="decimal"
-                    placeholder="1"
-                  />
+                  <div className="mb-3 mt-4 rounded-lg border bg-muted/20 p-3">
+                    <p className="text-[11px] text-muted-foreground">Required Transfer Value</p>
+                    <p className="font-mono text-sm font-bold">
+                      ≈ {estimatedXlm} XLM <span className="text-xs font-normal text-muted-foreground">({formatKSh(feeBreakdown.totalExpectedMinor / 100)})</span>
+                    </p>
+                  </div>
 
                   <label htmlFor="stellar-tx" className="mb-2 mt-3 block text-xs font-semibold">Transaction reference</label>
                   <input

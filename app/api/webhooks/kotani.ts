@@ -45,14 +45,14 @@ async function findOrder(
   url: string,
   serviceKey: string,
   providerReference: string,
-): Promise<{ order_id: string; status: string; amount_expected: number; currency: string } | null> {
+): Promise<{ order_id: string; community_id?: string; status: string; amount_expected: number; currency: string } | null> {
   const res = await fetch(
-    `${url}/rest/v1/payment_orders?provider=eq.kotani&provider_reference=eq.${encodeURIComponent(providerReference)}&select=order_id,status,amount_expected,currency&limit=1`,
+    `${url}/rest/v1/payment_orders?provider=eq.kotani&provider_reference=eq.${encodeURIComponent(providerReference)}&select=order_id,community_id,status,amount_expected,currency&limit=1`,
     { headers: supabaseHeaders(serviceKey) },
   );
   if (!res.ok) return null;
   const rows = (await res.json().catch(() => [])) as Array<{
-    order_id: string; status: string; amount_expected: number; currency: string;
+    order_id: string; community_id?: string; status: string; amount_expected: number; currency: string;
   }>;
   return rows[0] ?? null;
 }
@@ -116,25 +116,66 @@ export default async function handler(req: Request): Promise<Response> {
   const kotaniStatus = payload.status.toLowerCase();
 
   if (kotaniStatus === 'completed') {
-    if (order.status === 'PAYMENT_CONFIRMED') return json({ received: true, changed: false });
+    if (order.status === 'PAYMENT_CONFIRMED' || order.status === 'PROVIDER_CONFIRMED' || order.status === 'INDEXER_CONFIRMED' || order.status === 'RECONCILED') {
+      return json({ received: true, changed: false });
+    }
 
+    const expectedCurrency = (order.currency || 'KES').toUpperCase();
+    const paidCurrency = (payload.currency || 'KES').toUpperCase();
     const amountReceived = payload.kes_amount ?? payload.amount ?? null;
-    const amountMatches =
-      amountReceived === null || Number(amountReceived) === Number(order.amount_expected);
 
-    if (!amountMatches) {
+    if (expectedCurrency !== paidCurrency) {
       await patchOrder(supabaseUrl, serviceKey, order.order_id, {
         status: 'AMOUNT_MISMATCH',
-        amount_received: amountReceived,
+        amount_received: amountReceived !== null ? Number(amountReceived) : null,
       });
-      return json({ received: true, changed: true, status: 'AMOUNT_MISMATCH' });
+      return json({ error: 'currency_mismatch', status: 'AMOUNT_MISMATCH' }, { status: 422 });
+    }
+
+    if (amountReceived === null || !Number.isFinite(Number(amountReceived))) {
+      return json({ error: 'invalid_amount', message: 'Valid payment amount is required' }, { status: 422 });
+    }
+
+    const numAmount = Number(amountReceived);
+    const numExpected = Number(order.amount_expected || 0);
+
+    if (numAmount < numExpected) {
+      await patchOrder(supabaseUrl, serviceKey, order.order_id, {
+        status: 'AMOUNT_MISMATCH',
+        amount_received: numAmount,
+      });
+      return json({ received: true, changed: true, status: 'AMOUNT_MISMATCH' }, { status: 422 });
     }
 
     await patchOrder(supabaseUrl, serviceKey, order.order_id, {
       status: 'PAYMENT_CONFIRMED',
-      ...(amountReceived !== null ? { amount_received: amountReceived } : {}),
+      amount_received: numAmount,
       confirmed_at: new Date().toISOString(),
     });
+
+    if (order.community_id && numAmount > 0) {
+      try {
+        const commRes = await fetch(
+          `${supabaseUrl}/rest/v1/communities?id=eq.${encodeURIComponent(order.community_id)}&select=fund_balance&limit=1`,
+          { headers: supabaseHeaders(serviceKey) },
+        );
+        if (commRes.ok) {
+          const comms = (await commRes.json().catch(() => [])) as Array<{ fund_balance?: number }>;
+          const currentBal = Number(comms[0]?.fund_balance || 0);
+          await fetch(
+            `${supabaseUrl}/rest/v1/communities?id=eq.${encodeURIComponent(order.community_id)}`,
+            {
+              method: 'PATCH',
+              headers: supabaseHeaders(serviceKey),
+              body: JSON.stringify({ fund_balance: currentBal + numAmount }),
+            },
+          );
+        }
+      } catch {
+        // Non-fatal
+      }
+    }
+
     return json({ received: true, changed: true, status: 'PAYMENT_CONFIRMED' });
   }
 

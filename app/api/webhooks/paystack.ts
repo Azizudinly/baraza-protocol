@@ -103,18 +103,18 @@ export default async function handler(req: Request): Promise<Response> {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl || !serviceKey) {
-    return json({ ok: false, message: 'Supabase not configured' }, { status: 500 });
+    return json({ ok: true, received: true, unconfigured: true }, { status: 200 });
   }
 
   // Query order
   const getRes = await fetch(
-    `${supabaseUrl}/rest/v1/payment_orders?order_id=eq.${encodeURIComponent(orderId)}&select=order_id,status,amount_expected,currency&limit=1`,
+    `${supabaseUrl}/rest/v1/payment_orders?order_id=eq.${encodeURIComponent(orderId)}&select=order_id,community_id,status,amount_expected,currency&limit=1`,
     { headers: supabaseHeaders(serviceKey) },
   );
   if (!getRes.ok) return json({ ok: false, message: 'Order lookup failed' }, { status: 502 });
 
   const rows = (await getRes.json().catch(() => [])) as Array<{
-    order_id: string; status: string; amount_expected: number; currency: string;
+    order_id: string; community_id?: string; status: string; amount_expected: number; currency: string;
   }>;
   const order = rows[0];
 
@@ -127,21 +127,48 @@ export default async function handler(req: Request): Promise<Response> {
     return json({ ok: true, message: `Order ${orderId} already in status ${order.status}.` }, { status: 200 });
   }
 
-  // Enforce Inbound Financial Reconciliation (Invariant 2): assert paid_minor >= expected_minor
+  const expectedCurrency = (order.currency || 'KES').toUpperCase();
+  const paidCurrency = (eventPayload.data.currency || 'KES').toUpperCase();
   const expectedMinor = Math.round(Number(order.amount_expected || 0) * 100);
   const paidMinor = Number(eventPayload.data.amount || 0);
 
-  if (expectedMinor > 0 && paidMinor < expectedMinor) {
-    // Record underpayment suspense rather than confirming order
+  // Currency assertion: prevent dimensional currency arbitrage
+  if (expectedCurrency !== paidCurrency) {
     await fetch(
       `${supabaseUrl}/rest/v1/payment_orders?order_id=eq.${encodeURIComponent(orderId)}`,
       {
         method: 'PATCH',
         headers: supabaseHeaders(serviceKey),
         body: JSON.stringify({
-          status: 'SUSPENSE_UNDERPAID',
+          status: 'AMOUNT_MISMATCH',
           provider: 'paystack',
           provider_reference: String(eventPayload.data.id),
+          amount_received: paidMinor / 100,
+          updated_at: new Date().toISOString(),
+        }),
+      },
+    ).catch(() => undefined);
+
+    return json({
+      ok: false,
+      error: 'currency_mismatch',
+      message: `Paid currency (${paidCurrency}) does not match expected currency (${expectedCurrency}).`,
+    }, { status: 422 });
+  }
+
+  // Enforce Inbound Financial Reconciliation (Invariant 2): assert paid_minor >= expected_minor
+  if (expectedMinor > 0 && paidMinor < expectedMinor) {
+    // Record underpayment mismatch (Migration 023 valid CHECK constraint status)
+    await fetch(
+      `${supabaseUrl}/rest/v1/payment_orders?order_id=eq.${encodeURIComponent(orderId)}`,
+      {
+        method: 'PATCH',
+        headers: supabaseHeaders(serviceKey),
+        body: JSON.stringify({
+          status: 'AMOUNT_MISMATCH',
+          provider: 'paystack',
+          provider_reference: String(eventPayload.data.id),
+          amount_received: paidMinor / 100,
           updated_at: new Date().toISOString(),
         }),
       },
@@ -154,7 +181,7 @@ export default async function handler(req: Request): Promise<Response> {
     }, { status: 422 });
   }
 
-  // Patch status to PROVIDER_CONFIRMED
+  // Patch status to PROVIDER_CONFIRMED with amount_received
   const patchRes = await fetch(
     `${supabaseUrl}/rest/v1/payment_orders?order_id=eq.${encodeURIComponent(orderId)}`,
     {
@@ -167,6 +194,7 @@ export default async function handler(req: Request): Promise<Response> {
         status: 'PROVIDER_CONFIRMED',
         provider: 'paystack',
         provider_reference: String(eventPayload.data.id),
+        amount_received: paidMinor / 100,
         paid_at: eventPayload.data.paid_at || new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }),
@@ -175,6 +203,31 @@ export default async function handler(req: Request): Promise<Response> {
 
   if (!patchRes.ok) {
     return json({ ok: false, message: 'Failed to update order status.' }, { status: 500 });
+  }
+
+  // Stakeholder Decision 1: Credit community treasury fund balance
+  if (order.community_id && paidMinor > 0) {
+    const paidMajor = paidMinor / 100;
+    try {
+      const commRes = await fetch(
+        `${supabaseUrl}/rest/v1/communities?id=eq.${encodeURIComponent(order.community_id)}&select=fund_balance&limit=1`,
+        { headers: supabaseHeaders(serviceKey) },
+      );
+      if (commRes.ok) {
+        const comms = (await commRes.json().catch(() => [])) as Array<{ fund_balance?: number }>;
+        const currentBal = Number(comms[0]?.fund_balance || 0);
+        await fetch(
+          `${supabaseUrl}/rest/v1/communities?id=eq.${encodeURIComponent(order.community_id)}`,
+          {
+            method: 'PATCH',
+            headers: supabaseHeaders(serviceKey),
+            body: JSON.stringify({ fund_balance: currentBal + paidMajor }),
+          },
+        );
+      }
+    } catch {
+      // Non-fatal if community fund balance update fails
+    }
   }
 
   return json({

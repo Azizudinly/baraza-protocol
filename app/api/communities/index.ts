@@ -7,6 +7,10 @@ interface CommunityCreateRequest {
   type: string;
   description: string;
   membershipFee: number;
+  activationFeeMinor?: number;
+  feeType?: string;
+  carrierPassThrough?: boolean;
+  currency?: string;
   chain?: string;
   quorumPct?: number;
   approvalThresholdPct?: number;
@@ -93,6 +97,10 @@ async function handler(req: Request): Promise<Response> {
     type: type.trim(),
     description: description.trim(),
     membership_fee: membershipFee,
+    activation_fee_minor: body.activationFeeMinor ?? Math.round(membershipFee * 100),
+    fee_type: body.feeType ?? (membershipFee === 0 ? 'free' : 'one_time'),
+    carrier_pass_through: body.carrierPassThrough !== false,
+    currency: (body.currency || 'KES').toUpperCase(),
     member_count: 0,
     fund_balance: 0,
     active_decisions: 0,

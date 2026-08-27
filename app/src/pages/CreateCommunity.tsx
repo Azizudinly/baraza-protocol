@@ -294,6 +294,7 @@ const CreateCommunity: React.FC = () => {
     type: string;
     fee: string;
     feeType: 'one_time' | 'recurring_monthly' | 'free';
+    carrierPassThrough: boolean;
     description: string;
     phone: string;
     quorum: string;
@@ -308,6 +309,7 @@ const CreateCommunity: React.FC = () => {
       type: preset ? requestedType : '',
       fee: '500',
       feeType: 'recurring_monthly',
+      carrierPassThrough: true,
       description: '',
       phone: '',
       quorum: preset?.quorum ?? '51',
@@ -481,7 +483,7 @@ const CreateCommunity: React.FC = () => {
           membershipFee: form.feeType === 'free' ? 0 : Number(form.fee),
           activationFeeMinor: form.feeType === 'free' ? 0 : Math.round(Number(form.fee || 0) * 100),
           feeType: form.feeType,
-          carrierPassThrough: true,
+          carrierPassThrough: form.carrierPassThrough,
           currency: account.country.currency,
           chain: selectedCommunityChain,
           quorumPct: Number(form.quorum),
@@ -695,18 +697,36 @@ const CreateCommunity: React.FC = () => {
                 </div>
 
                 {form.feeType !== 'free' ? (
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-medium">{account.country.currency}</span>
-                    <input
-                      type="number"
-                      name="fee"
-                      value={form.fee}
-                      onChange={handleChange}
-                      placeholder="e.g. 500"
-                      min="1"
-                      className="w-full rounded-xl pl-14 pr-4 py-3 text-sm outline-none border"
-                    />
-                  </div>
+                  <>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-medium">{account.country.currency}</span>
+                      <input
+                        type="number"
+                        name="fee"
+                        value={form.fee}
+                        onChange={handleChange}
+                        placeholder="e.g. 500"
+                        min="1"
+                        className="w-full rounded-xl pl-14 pr-4 py-3 text-sm outline-none border"
+                      />
+                    </div>
+                    <div className="mt-3 flex items-center justify-between rounded-xl border p-3 bg-muted/10">
+                      <div className="pr-3">
+                        <p className="text-xs font-semibold">Pass mobile money carrier processing cost (0.5%) to members</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {form.carrierPassThrough
+                            ? 'Members pay dues + 0.5% carrier cost. Community treasury receives 100% of base dues.'
+                            : 'Community treasury absorbs the 0.5% carrier cost upon deposit.'}
+                        </p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={form.carrierPassThrough}
+                        onChange={(e) => setForm({ ...form, carrierPassThrough: e.target.checked })}
+                        className="h-4 w-4 rounded accent-primary cursor-pointer"
+                      />
+                    </div>
+                  </>
                 ) : (
                   <div className="rounded-xl border p-3 bg-muted/20 text-xs text-muted-foreground">
                     Members can join this community for free without paying activation dues.

@@ -363,9 +363,27 @@ if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, { status
     brzaPriceUsd = claim.brzaPriceUsd;
   } else if (stellarNetwork(requestedEnvironment) !== 'mainnet' && process.env.NODE_ENV === 'development') {
     if (!body.communityId) return bad('communityId is required');
-    if (!Number.isFinite(body.amountXlm) || (body.amountXlm ?? 0) <= 0) return bad('amountXlm must be greater than zero.');
+    const supabaseUrl = process.env.SUPABASE_URL?.replace(/\/$/, '');
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    let minDuesXlm = 0.1;
+    if (supabaseUrl && serviceRoleKey) {
+      try {
+        const commRes = await fetch(
+          `${supabaseUrl}/rest/v1/communities?id=eq.${encodeURIComponent(body.communityId)}&select=id,activation_fee_minor&limit=1`,
+          { headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` } },
+        );
+        if (commRes.ok) {
+          const rows = (await commRes.json().catch(() => [])) as Array<{ activation_fee_minor?: number }>;
+          const minor = rows[0]?.activation_fee_minor ?? 50000;
+          const xlmUsd = 0.10;
+          minDuesXlm = Number(((minor / 100) * (1 / 130) / xlmUsd).toFixed(4));
+        }
+      } catch {
+        // Fall back to minDuesXlm
+      }
+    }
     communityId = body.communityId;
-    amountXlm = body.amountXlm!;
+    amountXlm = Math.max(minDuesXlm, Number(body.amountXlm || minDuesXlm));
   } else {
     return bad('intentToken is required for production Stellar payments.');
   }
