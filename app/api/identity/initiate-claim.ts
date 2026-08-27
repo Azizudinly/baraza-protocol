@@ -56,7 +56,7 @@ async function sendClaimSms(phone: string, code: string): Promise<void> {
   }).catch(() => undefined);
 }
 
-export default async function handler(req: Request): Promise<Response> {
+async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       headers: {
@@ -132,3 +132,6 @@ export default async function handler(req: Request): Promise<Response> {
 
   return json({ ok: true, expiresAt });
 }
+
+export { handler as default, handler as POST, handler as OPTIONS };
+

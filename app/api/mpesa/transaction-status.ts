@@ -63,7 +63,17 @@ function isAuthorized(req: Request): boolean {
   return diff === 0;
 }
 
-export default async function handler(req: Request): Promise<Response> {
+async function handler(req: Request): Promise<Response> {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'access-control-allow-origin': '*',
+        'access-control-allow-methods': 'POST,OPTIONS',
+        'access-control-allow-headers': 'authorization,content-type',
+      },
+    });
+  }
   if (req.method !== 'POST') {
     return json({ error: 'method_not_allowed' }, { status: 405 });
   }
@@ -119,3 +129,5 @@ export default async function handler(req: Request): Promise<Response> {
     return json({ ok: false, queryAccepted: false, error: message }, { status: 502 });
   }
 }
+
+export { handler as default, handler as POST, handler as OPTIONS };

@@ -34,7 +34,7 @@ function bad(message: string, status = 400): Response {
   return json({ error: 'invalid_request', message }, { status });
 }
 
-export default async function handler(req: Request): Promise<Response> {
+async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
@@ -106,4 +106,4 @@ export default async function handler(req: Request): Promise<Response> {
   }, { status: 200 });
 }
 
-export { handler as POST, handler as OPTIONS };
+export { handler as default, handler as POST, handler as OPTIONS };

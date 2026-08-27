@@ -1,1 +1,3 @@
-export { default, config, POST, OPTIONS } from '../../app/api/treasury/initialize.js';
+// See /api/README.md — re-exports the real implementation in app/api/.
+export const config = { runtime: 'nodejs' };
+export { default, POST, OPTIONS } from '../../app/api/treasury/initialize.js';
