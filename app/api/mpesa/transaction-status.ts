@@ -52,9 +52,24 @@ async function setOrderStatusQuerySent(
   if (!res.ok) throw new Error('status_query_persist_failed');
 }
 
+function isAuthorized(req: Request): boolean {
+  const secret = process.env.PAYMENT_ADAPTER_PROXY_SECRET?.trim() || process.env.CRON_SECRET?.trim();
+  if (!secret) return false; // Fail-closed: MUST be configured
+  const auth = req.headers.get('authorization') || '';
+  const expected = `Bearer ${secret}`;
+  if (auth.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) diff |= auth.charCodeAt(i) ^ expected.charCodeAt(i);
+  return diff === 0;
+}
+
 export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') {
     return json({ error: 'method_not_allowed' }, { status: 405 });
+  }
+
+  if (!isAuthorized(req)) {
+    return json({ error: 'unauthorized', message: 'Unauthorized status query proxy call.' }, { status: 401 });
   }
 
   try {

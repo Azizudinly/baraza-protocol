@@ -688,7 +688,7 @@ describe('Database-Integrated Real HTTP Stress & Correctness Suite', () => {
       responses.forEach((r) => expect(r.status).toBe(201));
     });
 
-    it('rejects unauthenticated proxy calls on kotani and minisend', async () => {
+    it('rejects unauthenticated proxy calls on kotani, minisend, and mpesa transaction-status', async () => {
       const kotaniRes = await fetch(`${baseUrl}/api/payments/kotani`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -702,6 +702,81 @@ describe('Database-Integrated Real HTTP Stress & Correctness Suite', () => {
         body: JSON.stringify({ action: 'unknown' }),
       });
       expect(minisendRes.status).toBe(401);
+
+      const statusRes = await fetch(`${baseUrl}/api/mpesa/transaction-status`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ transactionId: 'ws_unauth_test' }),
+      });
+      expect(statusRes.status).toBe(401);
+    });
+
+    it('detects and rejects underpayment attacks on Paystack webhook (Invariant 2)', async () => {
+      const orderId = 'ord_underpay_attack_1';
+      db.paymentOrders.set(orderId, {
+        order_id: orderId,
+        community_id: 'amani_sacco_uuid_1001',
+        amount_expected: 410.00, // Expected KES 410 = 41,000 cents
+        amount_minor: 41000,
+        currency: 'KES',
+        status: 'PENDING_PROVIDER',
+        provider_environment: 'sandbox',
+        activation_secret_hash: 'hash_secret_underpay',
+        wallet_address: null,
+      });
+
+      // Dispatch webhook payload with only KES 1 (100 cents)
+      const underpayPayload = JSON.stringify({
+        event: 'charge.success',
+        data: {
+          id: 991122,
+          reference: orderId,
+          amount: 100, // Underpaid: KES 1 instead of KES 410
+          currency: 'KES',
+          status: 'success',
+        },
+      });
+
+      const key = await crypto.subtle.importKey(
+        'raw',
+        new TextEncoder().encode(process.env.PAYSTACK_SECRET_KEY || 'test_secret_paystack_key'),
+        { name: 'HMAC', hash: 'SHA-512' },
+        false,
+        ['sign'],
+      );
+      const digest = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(underpayPayload));
+      const sig = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+
+      const webhookRes = await fetch(`${baseUrl}/api/webhooks/paystack`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-paystack-signature': sig,
+        },
+        body: underpayPayload,
+      });
+
+      expect(webhookRes.status).toBe(422);
+      const data = await webhookRes.json() as Record<string, unknown>;
+      expect(data.error).toBe('underpayment_detected');
+
+      // Verify order transitioned to SUSPENSE_UNDERPAID
+      const order = db.paymentOrders.get(orderId);
+      expect(order?.status).toBe('SUSPENSE_UNDERPAID');
+    });
+
+    it('dynamically computes amountXlm when omitted from payment intent request (Invariant 5)', async () => {
+      const res = await fetch(`${baseUrl}/api/stellar/create-payment-intent`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          communityId: 'amani_sacco_uuid_1001',
+        }),
+      });
+      expect(res.status).toBe(201);
+      const data = await res.json() as { amountXlm: number; feeBreakdown: { totalExpectedMinor: number } };
+      expect(data.amountXlm).toBeGreaterThan(0);
+      expect(data.feeBreakdown.totalExpectedMinor).toBe(41000);
     });
 
     it('handles USSD gateway interactive session', async () => {

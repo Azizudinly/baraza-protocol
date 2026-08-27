@@ -30,9 +30,14 @@ function bad(message: string, status = 400): Response {
 }
 
 function isAuthorized(req: Request): boolean {
-  const secret = process.env.PAYMENT_ADAPTER_PROXY_SECRET;
-  if (!secret) return true; // Open to internal server calls if proxy secret unset in dev
-  return req.headers.get('authorization') === `Bearer ${secret}`;
+  const secret = process.env.PAYMENT_ADAPTER_PROXY_SECRET?.trim();
+  if (!secret) return false; // Fail-closed: proxy secret MUST be set
+  const auth = req.headers.get('authorization') || '';
+  const expected = `Bearer ${secret}`;
+  if (auth.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) diff |= auth.charCodeAt(i) ^ expected.charCodeAt(i);
+  return diff === 0;
 }
 
 async function upstream(path: string, init: RequestInit, key: string): Promise<Response> {

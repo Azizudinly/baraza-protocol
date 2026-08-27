@@ -30,6 +30,11 @@ describe('Database Migration 024: Communities Dynamic Activation Fee', () => {
     expect(sql).toMatch(/ADD\s+COLUMN\s+IF\s+NOT\s+EXISTS\s+activation_fee_minor\s+BIGINT\s+NOT\s+NULL\s+DEFAULT\s+0/i);
   });
 
+  it('includes mandatory legacy data backfill query to preserve existing community dues', () => {
+    const sql = readMigration024();
+    expect(sql).toMatch(/UPDATE\s+communities\s+SET\s+activation_fee_minor\s*=\s*COALESCE\s*\(\s*ROUND\s*\(\s*membership_fee\s*\*\s*100\s*\)\s*,\s*50000\s*\)/i);
+  });
+
   it('enforces CHECK constraint for fee_type covering one_time, recurring_monthly, and free', () => {
     const sql = readMigration024();
     const values = extractFeeTypeCheckValues(sql);

@@ -127,6 +127,33 @@ export default async function handler(req: Request): Promise<Response> {
     return json({ ok: true, message: `Order ${orderId} already in status ${order.status}.` }, { status: 200 });
   }
 
+  // Enforce Inbound Financial Reconciliation (Invariant 2): assert paid_minor >= expected_minor
+  const expectedMinor = Math.round(Number(order.amount_expected || 0) * 100);
+  const paidMinor = Number(eventPayload.data.amount || 0);
+
+  if (expectedMinor > 0 && paidMinor < expectedMinor) {
+    // Record underpayment suspense rather than confirming order
+    await fetch(
+      `${supabaseUrl}/rest/v1/payment_orders?order_id=eq.${encodeURIComponent(orderId)}`,
+      {
+        method: 'PATCH',
+        headers: supabaseHeaders(serviceKey),
+        body: JSON.stringify({
+          status: 'SUSPENSE_UNDERPAID',
+          provider: 'paystack',
+          provider_reference: String(eventPayload.data.id),
+          updated_at: new Date().toISOString(),
+        }),
+      },
+    ).catch(() => undefined);
+
+    return json({
+      ok: false,
+      error: 'underpayment_detected',
+      message: `Paid amount (${paidMinor} cents) is less than expected dues (${expectedMinor} cents).`,
+    }, { status: 422 });
+  }
+
   // Patch status to PROVIDER_CONFIRMED
   const patchRes = await fetch(
     `${supabaseUrl}/rest/v1/payment_orders?order_id=eq.${encodeURIComponent(orderId)}`,

@@ -21,10 +21,14 @@ function bad(message: string, status = 400): Response {
 }
 
 function isAuthorized(req: Request): boolean {
-  const secret = process.env.PAYMENT_ADAPTER_PROXY_SECRET;
-  if (!secret) return true; // Open to internal client calls if proxy secret unset in dev
-  const authHeader = req.headers.get('authorization');
-  return authHeader === `Bearer ${secret}`;
+  const secret = process.env.PAYMENT_ADAPTER_PROXY_SECRET?.trim();
+  if (!secret) return false; // Fail-closed: proxy secret MUST be set
+  const auth = req.headers.get('authorization') || '';
+  const expected = `Bearer ${secret}`;
+  if (auth.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) diff |= auth.charCodeAt(i) ^ expected.charCodeAt(i);
+  return diff === 0;
 }
 
 export default async function handler(req: Request): Promise<Response> {
@@ -56,16 +60,54 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   if (body.action !== 'initialize') return bad('Supported action is initialize.');
-  if (!body.orderId?.trim()) return bad('orderId is required.');
+  const orderId = body.orderId?.trim();
+  if (!orderId) return bad('orderId is required.');
   if (!body.email?.trim() || !body.email.includes('@')) return bad('Valid email is required.');
-  if (!Number.isFinite(body.amountKes) || body.amountKes <= 0) return bad('amountKes must be greater than zero.');
 
-  // Paystack expects amount in minor currency units (cents/kobo)
-  const amountMinor = Math.round(body.amountKes * 100);
+  // Validate order amount against database when Supabase is configured
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  let amountMinor = Math.round(Number(body.amountKes || 0) * 100);
+
+  if (supabaseUrl && serviceKey) {
+    try {
+      const orderRes = await fetch(
+        `${supabaseUrl}/rest/v1/payment_orders?order_id=eq.${encodeURIComponent(orderId)}&select=order_id,amount_expected,amount_minor,currency&limit=1`,
+        {
+          headers: {
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+            'content-type': 'application/json',
+          },
+        },
+      );
+      if (orderRes.ok) {
+        const rows = (await orderRes.json().catch(() => [])) as Array<{
+          order_id: string;
+          amount_expected?: number;
+          amount_minor?: number;
+        }>;
+        if (rows.length > 0) {
+          const dbExpectedMinor = rows[0].amount_minor ?? Math.round(Number(rows[0].amount_expected || 0) * 100);
+          if (dbExpectedMinor > 0) {
+            // Override with the true database expected amount to prevent client price tampering
+            amountMinor = dbExpectedMinor;
+          }
+        }
+      }
+    } catch {
+      // Non-fatal if DB lookup fails, continue with validated positive amountMinor
+    }
+  }
+
+  if (!Number.isFinite(amountMinor) || amountMinor <= 0) {
+    return bad('Valid amount is required.');
+  }
+
   const currency = (body.currency || 'KES').toUpperCase();
 
   const siteUrl = process.env.VITE_SITE_URL || 'https://barazaprotocol.com';
-  const callbackUrl = body.callbackUrl || `${siteUrl}/payment-orders/${encodeURIComponent(body.orderId)}`;
+  const callbackUrl = body.callbackUrl || `${siteUrl}/payment-orders/${encodeURIComponent(orderId)}`;
 
   try {
     const upstreamRes = await fetch('https://api.paystack.co/transaction/initialize', {

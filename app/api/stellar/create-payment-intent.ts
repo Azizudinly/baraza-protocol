@@ -1,5 +1,7 @@
 export const config = { runtime: 'edge' };
 
+import { calculateDynamicFee } from '../../src/lib/payments/feeEngine';
+
 interface CreateIntentRequest {
   communityId: string;
   amountXlm?: number;
@@ -14,15 +16,6 @@ interface CommunityRow {
   fee_type?: string | null;
   carrier_pass_through?: boolean | null;
   currency?: string | null;
-}
-
-interface FeeBreakdown {
-  baseAmountMinor: number;
-  platformFeeMinor: number;
-  carrierCostMinor: number;
-  totalExpectedMinor: number;
-  currency: string;
-  isFree: boolean;
 }
 
 const XLM_USD_RATE_DEFAULT = 0.10;
@@ -45,6 +38,16 @@ function resolveXlmUsdRate(): number {
   return XLM_USD_RATE_DEFAULT;
 }
 
+function base64url(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function base64urlFromString(str: string): string {
+  return base64url(new TextEncoder().encode(str));
+}
+
 function json(body: unknown, init?: ResponseInit): Response {
   return new Response(JSON.stringify(body), {
     ...init,
@@ -60,16 +63,6 @@ function bad(message: string, status = 400): Response {
   return json({ error: 'invalid_request', message }, { status });
 }
 
-function base64url(bytes: Uint8Array): string {
-  let binary = '';
-  for (const b of bytes) binary += String.fromCharCode(b);
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-}
-
-function base64urlFromString(str: string): string {
-  return base64url(new TextEncoder().encode(str));
-}
-
 async function signPayload(encodedPayload: string, secret: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     'raw',
@@ -80,46 +73,6 @@ async function signPayload(encodedPayload: string, secret: string): Promise<stri
   );
   const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(encodedPayload));
   return base64url(new Uint8Array(sig));
-}
-
-function calculateDynamicFee(
-  baseAmountMinor: number,
-  currency = 'KES',
-  carrierPassThrough = true,
-): FeeBreakdown {
-  const safeBase = Number.isFinite(baseAmountMinor) && baseAmountMinor > 0
-    ? Math.floor(baseAmountMinor)
-    : 0;
-
-  if (safeBase === 0) {
-    return {
-      baseAmountMinor: 0,
-      platformFeeMinor: 0,
-      carrierCostMinor: 0,
-      totalExpectedMinor: 0,
-      currency,
-      isFree: true,
-    };
-  }
-
-  const platformFeeMinor = Math.round(safeBase * 0.02);
-  let carrierCostMinor = 0;
-  if (carrierPassThrough && currency.toUpperCase() === 'KES') {
-    if (safeBase >= 20000) {
-      carrierCostMinor = Math.min(Math.round(safeBase * 0.005), 20000);
-    }
-  }
-
-  const totalExpectedMinor = safeBase + platformFeeMinor + carrierCostMinor;
-
-  return {
-    baseAmountMinor: safeBase,
-    platformFeeMinor,
-    carrierCostMinor,
-    totalExpectedMinor,
-    currency: currency.toUpperCase(),
-    isFree: false,
-  };
 }
 
 async function fetchCommunity(
@@ -156,13 +109,14 @@ export default async function handler(req: Request): Promise<Response> {
       },
     });
   }
+
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, { status: 405 });
 
   const secret = process.env.STELLAR_INTENT_SECRET;
   if (!secret) {
     return json({
       error: 'intent_signing_not_configured',
-      message: 'Set STELLAR_INTENT_SECRET to enable secure payment intent binding.',
+      message: 'Set STELLAR_INTENT_SECRET to enable payment intent generation.',
     }, { status: 503 });
   }
 
@@ -183,7 +137,7 @@ export default async function handler(req: Request): Promise<Response> {
     community = await fetchCommunity(supabaseUrl, serviceRoleKey, body.communityId.trim());
   }
 
-  // Resolve base dues configuration
+  // Resolve base dues configuration from database (never trust client fallback if DB is configured)
   const feeType = community?.fee_type || 'one_time';
   let baseAmountMinor: number;
 
@@ -191,10 +145,11 @@ export default async function handler(req: Request): Promise<Response> {
     baseAmountMinor = 0;
   } else if (community?.activation_fee_minor !== undefined && community?.activation_fee_minor !== null) {
     baseAmountMinor = Number(community.activation_fee_minor);
-  } else if (body.amountKes !== undefined && Number.isFinite(body.amountKes)) {
+  } else if (body.amountKes !== undefined && Number.isFinite(body.amountKes) && (!supabaseUrl || !serviceRoleKey)) {
+    // Only allow client fallback in local unconfigured development
     baseAmountMinor = Math.round(body.amountKes * 100);
   } else {
-    // Fallback default: KES 500 = 50,000 cents if unset
+    // Default fallback: KES 500 = 50,000 cents
     baseAmountMinor = 50000;
   }
 
@@ -213,12 +168,6 @@ export default async function handler(req: Request): Promise<Response> {
 
   const feeBreakdown = calculateDynamicFee(baseAmountMinor, currency, carrierPassThrough);
 
-  const amountXlm = Number.isFinite(body.amountXlm) && (body.amountXlm ?? 0) > 0
-    ? (body.amountXlm as number)
-    : 1;
-
-  const nonce = base64url(crypto.getRandomValues(new Uint8Array(12)));
-  const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
   const xlmUsdRate = resolveXlmUsdRate();
   const brzaPriceUsd = resolveBrzaPriceUsd();
 
@@ -228,6 +177,16 @@ export default async function handler(req: Request): Promise<Response> {
       message: 'Set BRZA_PRICE_USD to enable payment intent creation.',
     }, { status: 503 });
   }
+
+  // Derive dynamic XLM amount: (totalKES / 130) / xlmUsdRate
+  const kesUsdRate = 1 / 130;
+  const derivedXlm = Number(((feeBreakdown.totalExpectedMinor / 100) * kesUsdRate / xlmUsdRate).toFixed(4));
+  const amountXlm = Number.isFinite(body.amountXlm) && (body.amountXlm ?? 0) > 0
+    ? (body.amountXlm as number)
+    : Math.max(0.1, derivedXlm);
+
+  const nonce = base64url(crypto.getRandomValues(new Uint8Array(12)));
+  const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
 
   const payload = JSON.stringify({
     communityId: body.communityId.trim(),
@@ -248,10 +207,12 @@ export default async function handler(req: Request): Promise<Response> {
 
   return json({
     intentToken: `${encodedPayload}.${sig}`,
-    feeBreakdown,
+    communityId: body.communityId.trim(),
     amountXlm,
     xlmUsdRate,
     brzaPriceUsd,
+    feeBreakdown,
     expiresAt,
+    nonce,
   }, { status: 201 });
 }

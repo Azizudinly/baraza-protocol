@@ -9,6 +9,11 @@ ALTER TABLE communities
   ADD COLUMN IF NOT EXISTS carrier_pass_through BOOLEAN NOT NULL DEFAULT true,
   ADD COLUMN IF NOT EXISTS currency TEXT NOT NULL DEFAULT 'KES';
 
+-- Mandatory backfill: convert legacy membership_fee (major units) to integer minor cents
+UPDATE communities
+SET activation_fee_minor = COALESCE(ROUND(membership_fee * 100), 50000)
+WHERE activation_fee_minor = 0 AND membership_fee IS NOT NULL AND membership_fee > 0;
+
 COMMENT ON COLUMN communities.activation_fee_minor IS 'Base membership activation fee in integer minor currency units (e.g. cents). Zero indicates a free community.';
 COMMENT ON COLUMN communities.fee_type IS 'Billing model: one_time, recurring_monthly, or free.';
 COMMENT ON COLUMN communities.carrier_pass_through IS 'Whether carrier collection costs are passed through to the payer.';
