@@ -1,6 +1,6 @@
 export const config = { runtime: 'edge' };
 
-import { calculateDynamicFee } from '../../src/lib/payments/feeEngine';
+import { calculateDynamicFee } from '../../src/lib/payments/feeEngine.js';
 
 interface CreateIntentRequest {
   communityId: string;

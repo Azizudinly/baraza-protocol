@@ -1,6 +1,6 @@
 export const config = { runtime: 'nodejs' };
 
-import { requestTransactionStatusQuery } from '../../../packages/integrations/src/daraja';
+import { requestTransactionStatusQuery } from '../../../packages/integrations/src/daraja.js';
 
 interface PaymentOrderRow {
   order_id: string;
