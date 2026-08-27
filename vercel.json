@@ -39,6 +39,18 @@
     "api/payment-orders/status.ts": {
       "maxDuration": 10
     },
+    "api/payments/paystack.ts": {
+      "maxDuration": 15
+    },
+    "api/webhooks/paystack.ts": {
+      "maxDuration": 15
+    },
+    "api/mpesa/transaction-status.ts": {
+      "maxDuration": 15
+    },
+    "api/treasury/initialize.ts": {
+      "maxDuration": 30
+    },
     "api/cron/promote-orders.ts": {
       "maxDuration": 60
     },
