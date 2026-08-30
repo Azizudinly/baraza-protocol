@@ -12,20 +12,16 @@
  * unset, the mint step no-ops and orders stay at MINT_QUEUED. The rest
  * of the chain still progresses.
  *
- * Auth: Vercel Cron sends `Authorization: Bearer <CRON_SECRET>` automatically
- * when scheduled via `vercel.json`. Manual calls in dev should set the same
+ * Auth: Scheduled cron sends `Authorization: Bearer <CRON_SECRET>` automatically
+ * when scheduled via Cloudflare or cron trigger. Manual calls in dev should set the same
  * header (or skip auth in dev mode).
  *
  * Each tick processes promotions in REVERSE order so an order moves at most
  * one stage per tick (otherwise PAYMENT_CONFIRMED would fast-forward to
  * RECONCILED in a single tick).
  *
- * Schedule: see `vercel.json` crons. Locked to "0 0 * * *" (daily) because
- * Vercel Hobby rejects any expression that fires more than once per day at
- * DEPLOY time. The design intent is a five-minute reconciliation cadence
- * (slash-5 stars) — restore the moment the project moves to Pro.
- * Member-facing impact today: payment promotion takes up to 24h instead
- * of up to 5min.
+ * Schedule: Inbound reconciliation cadence.
+ * Target execution cadence: 5-minute reconciliation.
  */
 
 import { timingSafeEqual } from 'node:crypto';
@@ -94,11 +90,10 @@ function json(body: unknown, init?: ResponseInit): Response {
 }
 
 /**
- * Vercel Cron's trigger request doesn't always reach this handler as a
- * Headers instance (observed in production: `req.headers.get is not a
- * function`, unlike normal HTTP-triggered invocations of this same
- * nodejs function). Accept either a Headers-like object or a plain
- * header record so the cron tick never throws before the auth check runs.
+ * Scheduled Cron's trigger request may reach this handler either as a
+ * Headers instance or a plain object record. Accept either a Headers-like
+ * object or a plain header record so the cron tick never throws before
+ * the auth check runs.
  */
 function getAuthorizationHeader(req: Request): string {
   const headers = req.headers as unknown;
@@ -120,7 +115,7 @@ function isAuthorized(req: Request): boolean {
 
 function paymentOrderFilter(from: string): string {
   const env =
-    process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production'
+    process.env.NODE_ENV === 'production' || process.env.CF_PAGES === '1' || process.env.VERCEL_ENV === 'production'
       ? 'production'
       : 'sandbox';
   return new URLSearchParams({
@@ -149,7 +144,7 @@ async function fetchMintQueue(): Promise<MintQueuedOrder[]> {
   const params = new URLSearchParams({
     status: 'eq.MINT_QUEUED',
     provider_environment:
-      process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production'
+      process.env.NODE_ENV === 'production' || process.env.CF_PAGES === '1' || process.env.VERCEL_ENV === 'production'
         ? 'eq.production'
         : 'eq.sandbox',
     select: 'order_id,wallet_address,brza_allocated',
@@ -272,7 +267,7 @@ async function fetchSubmittedOrders(): Promise<SubmittedOrder[]> {
   const params = new URLSearchParams({
     status: 'eq.MINT_SUBMITTED',
     provider_environment:
-      process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production'
+      process.env.NODE_ENV === 'production' || process.env.CF_PAGES === '1' || process.env.VERCEL_ENV === 'production'
         ? 'eq.production'
         : 'eq.sandbox',
     select: 'order_id,mint_signature,updated_at',
@@ -605,12 +600,7 @@ async function patchOrders(from: string, to: string): Promise<number> {
   return Array.isArray(data) ? data.length : 0;
 }
 
-// Named export, not a bare default export — Vercel's Node.js runtime treats
-// `export default function handler(req)` as the legacy `(req, res) => void`
-// signature and silently discards the Response this returns, hanging the
-// request until the function timeout (this is what caused the observed
-// "Task timed out after 60 seconds" errors on this route in production).
-// Vercel Cron invokes this route with GET.
+// Web Standards Request/Response signature
 async function handler(req: Request): Promise<Response> {
   if (!isAuthorized(req)) {
     return json({ error: 'unauthorized' }, { status: 401 });
@@ -620,7 +610,7 @@ async function handler(req: Request): Promise<Response> {
     return json({
       ok: false,
       reason: 'supabase_not_configured',
-      note: 'Set SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY in Vercel project settings to enable the promoter.',
+      note: 'Set SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY in environment variables to enable the promoter.',
     }, { status: 200 });
   }
 

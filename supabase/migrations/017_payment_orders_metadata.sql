@@ -4,8 +4,8 @@
 -- persist mint failure details (Horizon result codes, ledger numbers,
 -- timestamps) alongside the MINT_FAILED_FINAL status.
 --
--- Without this, the only record of *why* a mint failed lives in Vercel
--- function logs — fine for live debugging, useless for back-filling a
+-- Without this, the only record of *why* a mint failed lives in ephemeral
+-- serverless logs — fine for live debugging, useless for back-filling a
 -- triage queue or building admin tooling for stale orders.
 --
 -- The column is nullable and idempotent so this migration is safe to

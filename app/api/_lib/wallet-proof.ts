@@ -14,9 +14,22 @@ export interface WalletProof {
 
 export function getWalletProof(req: Request, fallbackWallet?: string | null): WalletProof | null {
   const wallet = req.headers.get('x-wallet-address') ?? fallbackWallet ?? null;
-  const message = req.headers.get('x-wallet-message');
+  let message = req.headers.get('x-wallet-message');
   const signature = req.headers.get('x-wallet-signature');
   if (!wallet || !message || !signature) return null;
+  if (message.startsWith('base64:')) {
+    try {
+      message = Buffer.from(message.slice(7), 'base64').toString('utf8');
+    } catch {
+      // ignore
+    }
+  } else if (message.includes('%0A') || message.includes('%20') || message.includes('%3A')) {
+    try {
+      message = decodeURIComponent(message);
+    } catch {
+      // ignore
+    }
+  }
   return { wallet, message, signature };
 }
 

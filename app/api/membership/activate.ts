@@ -292,7 +292,7 @@ export default async function handler(req: Request): Promise<Response> {
     );
   }
   if (
-    (process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production') &&
+    (process.env.NODE_ENV === 'production' || process.env.CF_PAGES === '1' || process.env.VERCEL_ENV === 'production') &&
     order.provider_environment !== 'production'
   ) {
     return bad('Sandbox payment orders cannot activate production memberships.', 403);

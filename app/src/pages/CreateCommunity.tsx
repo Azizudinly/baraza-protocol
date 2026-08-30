@@ -391,7 +391,7 @@ const CreateCommunity: React.FC = () => {
   /**
    * Charge the DAO setup fee via the M-Pesa simulator, then create the
    * community record. Falls back to direct creation if the simulator endpoint
-   * is unreachable (local dev without `vercel dev`) so the form still works
+   * is unreachable (local dev fallback) so the form still works
    * - the fee is then a paper-only acknowledgement, not enforced.
    */
   async function chargeCreationFee(): Promise<{ orderId: string; persisted: boolean }> {

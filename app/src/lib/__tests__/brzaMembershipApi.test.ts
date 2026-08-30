@@ -91,7 +91,7 @@ describe('BRZA membership payment API', () => {
     });
   });
 
-  it('marks non-Vercel production orders as production orders', async () => {
+  it('marks production orders as production orders', async () => {
     process.env.NODE_ENV = 'production';
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(Response.json([]))

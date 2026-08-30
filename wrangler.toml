@@ -1,0 +1,20 @@
+name = "baraza-protocol"
+compatibility_date = "2026-08-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "app/dist"
+
+[vars]
+STELLAR_NETWORK = "testnet"
+STELLAR_HORIZON_URL = "https://horizon-testnet.stellar.org"
+STELLAR_SOROBAN_RPC = "https://soroban-testnet.stellar.org"
+VITE_SITE_URL = "https://baraza.app"
+
+# FIFO Webhook Ingress Queue
+[[queues.producers]]
+binding = "WEBHOOK_QUEUE"
+queue = "baraza-webhook-ingress-queue"
+
+# PostgreSQL Hyperdrive Connection Pooler
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "baraza-supabase-hyperdrive-id"

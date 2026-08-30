@@ -11,7 +11,7 @@ import { classifyExit, logSessionExit } from '../../src/lib/ussd/monitoring.js';
 export const config = { runtime: 'edge' };
 
 function isProduction(): boolean {
-  return process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
+  return process.env.NODE_ENV === 'production' || process.env.CF_PAGES === '1' || process.env.VERCEL_ENV === 'production';
 }
 
 function isAuthorized(req: Request): boolean {

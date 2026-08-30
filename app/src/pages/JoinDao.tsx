@@ -187,7 +187,7 @@ export default function JoinDao() {
         activationSecret = data.activationSecret ?? null;
       }
     } catch {
-      // network/CORS/local-dev-no-vercel - fall through to mock
+      // network/CORS/local-dev - fall through to mock
     }
 
     if (!orderId) {
@@ -198,7 +198,7 @@ export default function JoinDao() {
     toast({
       title: usedFallback ? "Simulator unreachable - using local order" : "M-Pesa prompt sent",
       description: usedFallback
-        ? "Run \"vercel dev\" to exercise the real /api/mpesa/simulate endpoint."
+        ? "Run local dev server to exercise the real /api/mpesa/simulate endpoint."
         : `Enter your M-Pesa PIN on your phone to confirm ${formatKSh(feeBreakdown.totalExpectedMinor / 100)}.`,
     });
 

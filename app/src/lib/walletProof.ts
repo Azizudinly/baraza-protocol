@@ -26,7 +26,7 @@ export async function buildWalletProofHeaders(
   const signature = await wallet.signMessage(new TextEncoder().encode(message));
   return {
     'X-Wallet-Address': address,
-    'X-Wallet-Message': message,
+    'X-Wallet-Message': encodeURIComponent(message),
     'X-Wallet-Signature': bytesToBase64(signature),
   };
 }

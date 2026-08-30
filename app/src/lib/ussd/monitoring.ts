@@ -156,7 +156,7 @@ export async function sweepInvisibleUssdMembers(
 
   const cutoff = new Date(Date.now() - staleDays * 24 * 60 * 60 * 1000).toISOString();
   const env =
-    process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production'
+    process.env.NODE_ENV === 'production' || process.env.CF_PAGES === '1' || process.env.VERCEL_ENV === 'production'
       ? 'production'
       : 'sandbox';
 

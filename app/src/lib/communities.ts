@@ -289,7 +289,7 @@ export async function createCommunityRecord(input: CommunityInsert): Promise<Com
       }
     }
   } catch {
-    // Network/CORS/local-dev without vercel dev — fall through to localStorage
+    // Network/CORS/local-dev fallback — fall through to localStorage
   }
 
   const communities = readLocalCommunities();

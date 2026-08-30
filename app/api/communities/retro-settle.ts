@@ -27,8 +27,7 @@ export const config = { runtime: 'nodejs' };
  * Stellar; a follow-up will extend it to scan `retro_allocations` rows with
  * `settlement_status='pending'` and queue mints.
  *
- * Auth: this endpoint accepts a cron trigger (no auth, but only when called
- * from a Vercel cron — checked via `Authorization: Bearer ${CRON_SECRET}`)
+ * Auth: this endpoint accepts a cron trigger (checked via `Authorization: Bearer ${CRON_SECRET}`)
  * OR an admin wallet in `X-Admin-Wallet`. Either path works for manual
  * triggers during dev.
  */
