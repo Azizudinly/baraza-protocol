@@ -18,6 +18,7 @@
 8. [SAD v1.0 & Holy Grail Subsystem Completion Scorecard](#8-sad-v10--holy-grail-subsystem-completion-scorecard)
 
 ---
+the
 
 ## 1. Master Repository File Inventory & Classification
 
