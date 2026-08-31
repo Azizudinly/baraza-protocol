@@ -1,15 +1,15 @@
-name: CI
+name: CI / Cloudflare Pipeline
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
-    branches: [main]
+    branches: [main, dev]
   workflow_dispatch:
 
 jobs:
   protocol:
-    name: Protocol Drift
+    name: Protocol Drift & Rust Contracts
     runs-on: ubuntu-latest
 
     steps:
@@ -21,7 +21,7 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Install protocol test dependencies
+      - name: Install protocol root dependencies
         run: npm install
 
       - name: Check vendored protocol artifacts
@@ -31,7 +31,7 @@ jobs:
         run: npm run test:contracts:drift
 
   check:
-    name: Typecheck & Lint
+    name: TypeScript & Lint
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -49,14 +49,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: TypeScript
+      - name: TypeScript Strict Typecheck
         run: npm run typecheck
 
-      - name: Lint
+      - name: Code Quality Lint
         run: npm run lint
 
   test:
-    name: Unit tests
+    name: Unit & HTTP Stress Suite
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -74,11 +74,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Test
-        run: npm run test
+      - name: Run Full Vitest Suite & Stress Tests
+        run: npm test
 
   build:
-    name: Build
+    name: Cloudflare Production Build
     runs-on: ubuntu-latest
     needs: [protocol, check, test]
     defaults:
@@ -97,5 +97,42 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
+      - name: Build SPA Bundle
         run: npm run build
+
+      - name: Verify Cloudflare Pages Output
+        run: |
+          test -f dist/index.html
+          test -f dist/_routes.json
+          echo "Cloudflare Pages bundle successfully verified."
+
+  deploy:
+    name: Cloudflare Pages Deployment
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Install dependencies
+        run: cd app && npm ci
+
+      - name: Build Application
+        run: cd app && npm run build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != ''
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy app/dist --project-name=baraza-protocol --branch=main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
