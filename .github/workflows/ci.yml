@@ -1,4 +1,4 @@
-name: CI / Cloudflare Pipeline
+name: CI
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
 
 jobs:
   protocol:
-    name: Protocol Drift & Rust Contracts
+    name: Protocol Drift
     runs-on: ubuntu-latest
 
     steps:
@@ -31,7 +31,7 @@ jobs:
         run: npm run test:contracts:drift
 
   check:
-    name: TypeScript & Lint
+    name: Typecheck & Lint
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -56,7 +56,7 @@ jobs:
         run: npm run lint
 
   test:
-    name: Unit & HTTP Stress Suite
+    name: Unit tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -78,7 +78,7 @@ jobs:
         run: npm test
 
   build:
-    name: Cloudflare Production Build
+    name: Build
     runs-on: ubuntu-latest
     needs: [protocol, check, test]
     defaults:
