@@ -62,7 +62,11 @@ export function hasPathSecret(req: Request, secret: string | undefined): boolean
   if (!secret) return false;
   const pathname = new URL(req.url).pathname;
   const segments = pathname.split('/').filter(Boolean);
-  return segments[segments.length - 1] === secret;
+  const pathToken = segments[segments.length - 1] || '';
+  if (pathToken.length !== secret.length) return false;
+  let diff = 0;
+  for (let i = 0; i < secret.length; i++) diff |= pathToken.charCodeAt(i) ^ secret.charCodeAt(i);
+  return diff === 0;
 }
 
 export function json(body: unknown, init?: ResponseInit): Response {

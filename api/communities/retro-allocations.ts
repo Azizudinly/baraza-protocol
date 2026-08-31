@@ -1,3 +1,3 @@
-// M1-C1 root shim: see /api/README.md and 02-phase1-backend-execution-plan.md.
+// See /api/README.md — re-exports the real implementation in app/api/.
 export const config = { runtime: 'nodejs' };
-export { default } from '../../app/api/communities/retro-allocations.js';
+export { default, GET, OPTIONS } from '../../app/api/communities/retro-allocations.js';

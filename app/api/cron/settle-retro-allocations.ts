@@ -9,7 +9,7 @@
  * Once every allocation in a round is confirmed (no pending or submitted left),
  * the round advances from 'allocated' to 'settled'.
  *
- * Auth: Vercel cron sends `Authorization: Bearer ${CRON_SECRET}`. Manual
+ * Auth: Scheduled cron sends `Authorization: Bearer ${CRON_SECRET}`. Manual
  * triggers from admins can supply `X-Admin-Wallet`. Either path is honored.
  *
  * Key-gated: if BRZA_DISTRIBUTOR_SECRET / BRZA_ISSUER_PUBLIC_KEY / STELLAR_HORIZON_URL

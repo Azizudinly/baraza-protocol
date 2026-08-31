@@ -58,13 +58,15 @@ async function findOrder(
   url: string,
   serviceKey: string,
   providerReference: string,
-): Promise<{ order_id: string; status: string } | null> {
+): Promise<{ order_id: string; community_id?: string; status: string; amount_expected: number; currency: string } | null> {
   const res = await fetch(
-    `${url}/rest/v1/payment_orders?provider=eq.africastalking&provider_reference=eq.${encodeURIComponent(providerReference)}&select=order_id,status&limit=1`,
+    `${url}/rest/v1/payment_orders?provider=eq.africastalking&provider_reference=eq.${encodeURIComponent(providerReference)}&select=order_id,community_id,status,amount_expected,currency&limit=1`,
     { headers: supabaseHeaders(serviceKey) },
   );
   if (!res.ok) return null;
-  const rows = (await res.json().catch(() => [])) as Array<{ order_id: string; status: string }>;
+  const rows = (await res.json().catch(() => [])) as Array<{
+    order_id: string; community_id?: string; status: string; amount_expected: number; currency: string;
+  }>;
   return rows[0] ?? null;
 }
 
@@ -129,15 +131,52 @@ export default async function handler(req: Request): Promise<Response> {
 
   const atStatus = tx.status.toLowerCase();
   if (atStatus === 'success') {
-    if (order.status === 'PAYMENT_CONFIRMED') {
+    if (order.status === 'PAYMENT_CONFIRMED' || order.status === 'PROVIDER_CONFIRMED' || order.status === 'INDEXER_CONFIRMED' || order.status === 'RECONCILED') {
       return json({ received: true, changed: false });
     }
     const amount = parseKesAmount(tx.value);
+    if (amount === null || !Number.isFinite(amount)) {
+      return json({ error: 'invalid_amount', message: 'Unparseable payment amount' }, { status: 422 });
+    }
+
+    const expected = Number(order.amount_expected || 0);
+    if (amount < expected) {
+      await patchOrder(supabaseUrl, serviceKey, order.order_id, {
+        status: 'AMOUNT_MISMATCH',
+        amount_received: amount,
+      });
+      return json({ received: true, changed: true, status: 'AMOUNT_MISMATCH' }, { status: 422 });
+    }
+
     await patchOrder(supabaseUrl, serviceKey, order.order_id, {
       status: 'PAYMENT_CONFIRMED',
-      ...(amount !== null ? { amount_received: amount } : {}),
+      amount_received: amount,
       confirmed_at: new Date().toISOString(),
     });
+
+    if (order.community_id && amount > 0) {
+      try {
+        const commRes = await fetch(
+          `${supabaseUrl}/rest/v1/communities?id=eq.${encodeURIComponent(order.community_id)}&select=fund_balance&limit=1`,
+          { headers: supabaseHeaders(serviceKey) },
+        );
+        if (commRes.ok) {
+          const comms = (await commRes.json().catch(() => [])) as Array<{ fund_balance?: number }>;
+          const currentBal = Number(comms[0]?.fund_balance || 0);
+          await fetch(
+            `${supabaseUrl}/rest/v1/communities?id=eq.${encodeURIComponent(order.community_id)}`,
+            {
+              method: 'PATCH',
+              headers: supabaseHeaders(serviceKey),
+              body: JSON.stringify({ fund_balance: currentBal + amount }),
+            },
+          );
+        }
+      } catch {
+        // Non-fatal
+      }
+    }
+
     return json({ received: true, changed: true, status: 'PAYMENT_CONFIRMED' });
   }
 

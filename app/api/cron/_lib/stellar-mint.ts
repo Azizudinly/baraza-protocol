@@ -6,7 +6,7 @@
  * Why this lives here instead of importing app/src/lib/adapters/stellar.ts:
  * the adapter imports BRZA_ASSET from app/src/lib/brza/constants.ts, which
  * reads `import.meta.env` at module scope. That works in Vite browser
- * bundles, but breaks in a Vercel Node.js function. So we take all config
+ * bundles, but breaks in server runtimes. So we take all config
  * explicitly here — keeps the cron bundleable on the server runtime.
  *
  * Error classification matters: Horizon errors have different recovery

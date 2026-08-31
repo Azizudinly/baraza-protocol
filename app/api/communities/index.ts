@@ -7,6 +7,10 @@ interface CommunityCreateRequest {
   type: string;
   description: string;
   membershipFee: number;
+  activationFeeMinor?: number;
+  feeType?: string;
+  carrierPassThrough?: boolean;
+  currency?: string;
   chain?: string;
   quorumPct?: number;
   approvalThresholdPct?: number;
@@ -32,13 +36,7 @@ function bad(message: string, status = 400): Response {
   return json({ error: 'invalid_request', message }, { status });
 }
 
-// Vercel's Node.js runtime only recognizes the Web fetch-style Request/Response
-// signature via named HTTP-method exports (or `export default { fetch }`) — a
-// bare `export default function handler(req)` is invoked with the legacy
-// `(req, res) => void` calling convention instead, so the Response this
-// function returns is silently discarded and the request hangs until the
-// function timeout. See app/api/agent/chat.ts for the same pattern already
-// used correctly elsewhere in this repo.
+// Standard Web Fetch Request/Response handler
 async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
@@ -93,6 +91,10 @@ async function handler(req: Request): Promise<Response> {
     type: type.trim(),
     description: description.trim(),
     membership_fee: membershipFee,
+    activation_fee_minor: body.activationFeeMinor ?? Math.round(membershipFee * 100),
+    fee_type: body.feeType ?? (membershipFee === 0 ? 'free' : 'one_time'),
+    carrier_pass_through: body.carrierPassThrough !== false,
+    currency: (body.currency || 'KES').toUpperCase(),
     member_count: 0,
     fund_balance: 0,
     active_decisions: 0,

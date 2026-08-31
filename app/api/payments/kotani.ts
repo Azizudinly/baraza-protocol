@@ -1,8 +1,21 @@
 export const config = { runtime: 'edge' };
 
 type KotaniRequest =
-  | { action: 'mpesaToBrza'; phone: string; kesAmount: number; destinationAddress: string; communityCode: string }
-  | { action: 'brzaToMpesa'; phone: string; brzaAmount: string; sourceAddress: string }
+  | {
+      action: 'mpesaToBrza';
+      phone: string;
+      kesAmount: number;
+      destinationAddress: string;
+      communityCode: string;
+      orderId?: string;
+    }
+  | {
+      action: 'brzaToMpesa';
+      phone: string;
+      brzaAmount: string;
+      sourceAddress: string;
+      orderId?: string;
+    }
   | { action: 'checkStatus'; reference: string };
 
 function json(body: unknown, init?: ResponseInit): Response {
@@ -17,8 +30,14 @@ function bad(message: string, status = 400): Response {
 }
 
 function isAuthorized(req: Request): boolean {
-  const secret = process.env.PAYMENT_ADAPTER_PROXY_SECRET;
-  return Boolean(secret && req.headers.get('authorization') === `Bearer ${secret}`);
+  const secret = process.env.PAYMENT_ADAPTER_PROXY_SECRET?.trim();
+  if (!secret) return false; // Fail-closed: proxy secret MUST be set
+  const auth = req.headers.get('authorization') || '';
+  const expected = `Bearer ${secret}`;
+  if (auth.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) diff |= auth.charCodeAt(i) ^ expected.charCodeAt(i);
+  return diff === 0;
 }
 
 async function upstream(path: string, init: RequestInit, key: string): Promise<Response> {
@@ -32,11 +51,20 @@ async function upstream(path: string, init: RequestInit, key: string): Promise<R
     },
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) return bad(data.message ?? 'Kotani request failed.', 502);
+  if (!response.ok) return bad((data as { message?: string }).message ?? 'Kotani request failed.', 502);
   return json(data);
 }
 
 export default async function handler(req: Request): Promise<Response> {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      headers: {
+        'access-control-allow-origin': '*',
+        'access-control-allow-methods': 'POST, OPTIONS',
+        'access-control-allow-headers': 'content-type, authorization',
+      },
+    });
+  }
   if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, { status: 405 });
   if (!isAuthorized(req)) return bad('Payment adapter proxy is restricted to trusted server calls.', 401);
   const key = process.env.KOTANI_PAY_API_KEY;
@@ -61,6 +89,7 @@ export default async function handler(req: Request): Promise<Response> {
         currency: 'KES',
         destination: body.destinationAddress,
         memo: `BRZA ${body.communityCode}`,
+        client_reference: body.orderId || undefined,
         network: 'stellar',
       }),
     }, key);
@@ -76,6 +105,7 @@ export default async function handler(req: Request): Promise<Response> {
         phone: body.phone,
         xlm_amount: body.brzaAmount,
         source: body.sourceAddress,
+        client_reference: body.orderId || undefined,
         currency: 'KES',
       }),
     }, key);

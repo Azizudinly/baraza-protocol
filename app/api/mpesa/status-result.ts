@@ -7,7 +7,7 @@ import {
   isIpAllowed,
   json,
   patchOrderStatus,
-} from './status-callback-shared';
+} from './status-callback-shared.js';
 
 interface DarajaStatusResultBody {
   Result?: {

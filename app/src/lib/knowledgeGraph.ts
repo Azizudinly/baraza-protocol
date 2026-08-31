@@ -86,11 +86,11 @@ interface MembershipRow {
 
 const READINESS_TASKS: KnowledgeNode[] = [
   {
-    id: 'task:vercel-env',
+    id: 'task:production-env',
     type: 'readiness-task',
-    label: 'Add production Vercel environment variables',
+    label: 'Add production Cloudflare environment variables',
     status: 'blocker',
-    summary: 'Use .env.example as the source of truth and add real testnet keys in Vercel.',
+    summary: 'Use .env.example as the source of truth and add real production secrets in Cloudflare.',
   },
   {
     id: 'task:supabase-migrations',
@@ -305,7 +305,7 @@ export function buildKnowledgeGraph(input?: {
     addEdge(communityId, chainId, 'uses-chain', 'uses');
     addEdge(communityId, reviewId, 'has-review', 'Akili review');
 
-    if (review.level !== 'pass') addEdge(reviewId, 'task:vercel-env', 'needs-task', 'needs review before launch');
+    if (review.level !== 'pass') addEdge(reviewId, 'task:production-env', 'needs-task', 'needs review before launch');
   });
 
   proposals.forEach((proposal) => {

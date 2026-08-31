@@ -295,7 +295,7 @@ async function streamAkiliResponse(
   onChunk: (text: string) => void,
   agent: CouncilAgentName | null,
 ): Promise<void> {
-  // VITE_AKILI_API_URL points at the standalone Akili service (https://<akili>.vercel.app).
+  // VITE_AKILI_API_URL points at the standalone Akili service (e.g., https://akili.barazaprotocol.com).
   // Unset = use the in-repo /api/agent/chat fallback. Set = direct cross-origin call.
   const akiliBase = (import.meta.env.VITE_AKILI_API_URL as string | undefined)?.replace(/\/$/, '');
   const endpoint = akiliBase ? `${akiliBase}/api/chat` : '/api/agent/chat';

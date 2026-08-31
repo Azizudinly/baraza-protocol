@@ -89,13 +89,7 @@ export function classifyChatError(error: unknown): ChatErrorEvent {
   };
 }
 
-// Named HTTP-method exports (POST, OPTIONS) - NOT `export default`.
-// Vercel's Node.js runtime treats a default-export `(req, res) => void`
-// classic signature and ignores any returned Response, which silently
-// hangs requests for the full timeout. Named method exports are the
-// documented way to use the Web `fetch`-style API on Fluid Compute.
-// See https://vercel.com/docs/functions/functions-api-reference#function-signature
-
+// Named HTTP-method exports (POST, OPTIONS) for web standards fetch API
 export function OPTIONS(): Response {
   return new Response(null, {
     headers: {
@@ -108,8 +102,7 @@ export function OPTIONS(): Response {
 
 export async function POST(req: Request): Promise<Response> {
   // Belt-and-suspenders: any unexpected throw inside the handler body
-  // becomes a classified JSON event so the chat UI shows a member-facing
-  // message instead of Vercel's bare FUNCTION_INVOCATION_FAILED page.
+  // becomes a classified JSON event so the chat UI shows a clean member-facing message.
   try {
     return await handleChat(req);
   } catch (err) {

@@ -9,8 +9,10 @@ import {
   Phone,
   Stars,
   Wallet,
+  CheckCircle2,
 } from "lucide-react";
 import { storePaymentOrderActivationSecret } from "@/lib/payments";
+import { calculateDynamicFee } from "@/lib/payments/feeEngine";
 import Layout from "@/components/Layout";
 import { useCommunity } from "@/hooks/useCommunities";
 import { useToast } from "@/hooks/use-toast";
@@ -89,23 +91,21 @@ export default function JoinDao() {
   const { toast } = useToast();
   const [phone, setPhone] = useState("");
   const [stellarTxHash, setStellarTxHash] = useState("");
-  const [stellarAmountXlm, setStellarAmountXlm] = useState("1");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isVerifyingStellar, setIsVerifyingStellar] = useState(false);
   const [pendingWalletJoin, setPendingWalletJoin] = useState(false);
 
   const amount = community?.membershipFee ?? 0;
+  const feeBreakdown = calculateDynamicFee(amount * 100, 'KES', true);
+  const isFree = feeBreakdown.isFree;
+  const estimatedXlm = Number(((feeBreakdown.totalExpectedMinor / 100) * (1 / 130) / 0.10).toFixed(4));
+
   const normalisedPhone = normaliseKenyanPhone(phone);
-  const canSubmit = normalisedPhone !== null && amount > 0 && !isSubmitting;
-  const canVerifyStellar = /^[a-f0-9]{64}$/i.test(stellarTxHash.trim()) &&
-    Number(stellarAmountXlm) > 0 &&
-    !isVerifyingStellar;
+  const canSubmit = (isFree || (normalisedPhone !== null && amount > 0)) && !isSubmitting;
+  const canVerifyStellar = /^[a-f0-9]{64}$/i.test(stellarTxHash.trim()) && !isVerifyingStellar;
 
   function startAccountJoin(accountId: string) {
-    if (!id || amount <= 0) return;
-    // ord_local_ prefix: there is no server-side order for the wallet rail yet,
-    // so JoinStatus must run its local progression instead of polling Supabase
-    // for an order that doesn't exist.
+    if (!id) return;
     const orderId = `ord_local_wallet_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     toast({
       title: "Account payment started",
@@ -121,9 +121,48 @@ export default function JoinDao() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account.accountId, account.authenticated, pendingWalletJoin]);
 
-  // Dismissing the wallet modal abandons the join intent — otherwise a later
-  // connection (e.g. from the header) would silently restart the flow.
+  async function handleFreeJoin() {
+    if (!id || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const walletAddress = account.accountId || (phone ? `phone:${phone}` : `phone:anon_${crypto.randomUUID()}`);
+      const freeOrderId = `ord_free_${id}_${Date.now().toString(36)}_${crypto.randomUUID().slice(0, 8)}`;
+      const freeSecret = `sec_free_${crypto.randomUUID()}`;
+      const res = await fetch("/api/membership/activate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          orderId: freeOrderId,
+          communityId: id,
+          walletAddress,
+          activationSecret: freeSecret,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; message?: string };
+      if (res.ok && data.ok) {
+        toast({
+          title: "Membership Activated",
+          description: `Welcome to ${community?.name || 'the community'}!`,
+        });
+        navigate(`/dashboard/${id}`);
+        return;
+      }
+      throw new Error(data.message || "Failed to activate free membership.");
+    } catch (err: unknown) {
+      toast({
+        title: "Activation failed",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   async function handleMpesaSubmit() {
+    if (isFree) {
+      return handleFreeJoin();
+    }
     if (!canSubmit || !id || !normalisedPhone) return;
     setIsSubmitting(true);
 
@@ -138,7 +177,7 @@ export default function JoinDao() {
         body: JSON.stringify({
           phone: `+254${normalisedPhone}`,
           communityId: id,
-          amount,
+          amount: Math.round(feeBreakdown.totalExpectedMinor / 100),
           currency: "KES",
         }),
       });
@@ -148,7 +187,7 @@ export default function JoinDao() {
         activationSecret = data.activationSecret ?? null;
       }
     } catch {
-      // network/CORS/local-dev-no-vercel - fall through to mock
+      // network/CORS/local-dev - fall through to mock
     }
 
     if (!orderId) {
@@ -159,12 +198,10 @@ export default function JoinDao() {
     toast({
       title: usedFallback ? "Simulator unreachable - using local order" : "M-Pesa prompt sent",
       description: usedFallback
-        ? "Run \"vercel dev\" to exercise the real /api/mpesa/simulate endpoint."
-        : "Enter your M-Pesa PIN on your phone to confirm the payment.",
+        ? "Run local dev server to exercise the real /api/mpesa/simulate endpoint."
+        : `Enter your M-Pesa PIN on your phone to confirm ${formatKSh(feeBreakdown.totalExpectedMinor / 100)}.`,
     });
 
-    // Reset state before navigating so re-entering the page (back button)
-    // doesn't leave the button permanently disabled.
     setIsSubmitting(false);
     if (activationSecret) storePaymentOrderActivationSecret(orderId, activationSecret);
     navigate(`/join/${id}/status?orderId=${encodeURIComponent(orderId)}`);
@@ -182,7 +219,7 @@ export default function JoinDao() {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             communityId: id,
-            amountXlm: Number(stellarAmountXlm),
+            amountKes: amount,
             environment: PRODUCT_ENVIRONMENT,
           }),
         });
@@ -191,7 +228,7 @@ export default function JoinDao() {
           intentToken = intentData.intentToken ?? null;
         }
       } catch {
-        // Intent service unavailable - verify-payment will use legacy path on testnet.
+        // Intent service unavailable
       }
 
       const res = await fetch("/api/stellar/verify-payment", {
@@ -203,7 +240,6 @@ export default function JoinDao() {
             : {
                 communityId: id,
                 txHash: stellarTxHash.trim().toLowerCase(),
-                amountXlm: Number(stellarAmountXlm),
                 environment: PRODUCT_ENVIRONMENT,
               },
         ),
@@ -265,14 +301,43 @@ export default function JoinDao() {
                     </p>
                   </div>
                   <div className="w-full rounded-lg border px-4 py-3 md:w-auto md:text-right">
-                    <p className="text-xs">Monthly Dues</p>
+                    <p className="text-xs">Membership Dues</p>
                     <p className="font-display text-lg font-bold">
-                      {amount > 0 ? formatKSh(amount) : "-"}
+                      {isFree ? "Free / Zero Dues" : formatKSh(amount)}
                     </p>
                   </div>
                 </div>
               </div>
               </CommunityBanner>
+
+              {/* Pre-Transaction Itemized Fee Disclosure */}
+              {!isFree && (
+                <div className="mx-5 mt-5 rounded-lg border p-4 bg-muted/30 md:mx-6">
+                  <h3 className="font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                    Pre-Transaction Fee Breakdown
+                  </h3>
+                  <div className="grid gap-2 text-xs sm:text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Base Community Dues</span>
+                      <span className="font-medium">{formatKSh(feeBreakdown.baseAmountMinor / 100)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Baraza Platform Fee (2.0%)</span>
+                      <span className="font-medium">{formatKSh(feeBreakdown.platformFeeMinor / 100)}</span>
+                    </div>
+                    {feeBreakdown.carrierCostMinor > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Carrier Processing Cost (0.5% capped)</span>
+                        <span className="font-medium">{formatKSh(feeBreakdown.carrierCostMinor / 100)}</span>
+                      </div>
+                    )}
+                    <div className="border-t pt-2 flex justify-between font-semibold text-sm">
+                      <span>Total Expected Payment</span>
+                      <span className="text-primary font-bold">{formatKSh(feeBreakdown.totalExpectedMinor / 100)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="grid gap-4 p-5 lg:grid-cols-3 md:p-6">
                 <div className="rounded-lg border p-5">
@@ -282,36 +347,47 @@ export default function JoinDao() {
                     </div>
                     <div>
                       <h2 className="font-display text-base font-semibold">Phone-first M-Pesa</h2>
-                      <p className="text-xs">Primary MVP path</p>
+                      <p className="text-xs">Primary mobile money rail</p>
                     </div>
                   </div>
 
-                  <label htmlFor="join-phone" className="mb-2 block text-xs font-semibold">M-Pesa phone number</label>
-                  <div className="flex rounded-lg border focus-within:border-current">
-                    <span className="border-r px-3 py-3 text-sm">+254</span>
-                    <input
-                      id="join-phone"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="min-w-0 flex-1 px-3 py-3 text-sm outline-none"
-                      placeholder="e.g. 0712 345 678"
-                      type="tel"
-                      inputMode="numeric"
-                      autoComplete="tel-national"
-                    />
-                  </div>
-                  <p className="mt-2 text-[11px]">We&apos;ll send a one-time code by SMS. Your number stays private.</p>
+                  {!isFree ? (
+                    <>
+                      <label htmlFor="join-phone" className="mb-2 block text-xs font-semibold">M-Pesa phone number</label>
+                      <div className="flex rounded-lg border focus-within:border-current">
+                        <span className="border-r px-3 py-3 text-sm">+254</span>
+                        <input
+                          id="join-phone"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          className="min-w-0 flex-1 px-3 py-3 text-sm outline-none"
+                          placeholder="e.g. 0712 345 678"
+                          type="tel"
+                          inputMode="numeric"
+                          autoComplete="tel-national"
+                        />
+                      </div>
+                      <p className="mt-2 text-[11px]">We&apos;ll send an STK prompt. Your number stays private.</p>
+                    </>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">This community has no activation dues. You can join immediately.</p>
+                  )}
 
                   <button
                     type="button"
-                    onClick={handleMpesaSubmit}
+                    onClick={isFree ? handleFreeJoin : handleMpesaSubmit}
                     disabled={!canSubmit}
                     className="btn-warm mt-5 w-full justify-center gap-2 py-3 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {isSubmitting ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Sending prompt...
+                        {isFree ? "Activating..." : "Sending prompt..."}
+                      </>
+                    ) : isFree ? (
+                      <>
+                        <CheckCircle2 className="h-4 w-4" />
+                        Join Free Community
                       </>
                     ) : (
                       <>
@@ -336,15 +412,12 @@ export default function JoinDao() {
                     Paste the transaction reference supplied by your transfer provider. Baraza verifies it before activating membership.
                   </p>
 
-                  <label htmlFor="stellar-amount" className="mb-2 mt-4 block text-xs font-semibold">Transfer amount reference</label>
-                  <input
-                    id="stellar-amount"
-                    value={stellarAmountXlm}
-                    onChange={(event) => setStellarAmountXlm(event.target.value)}
-                    className="w-full rounded-lg border px-3 py-3 text-sm outline-none"
-                    inputMode="decimal"
-                    placeholder="1"
-                  />
+                  <div className="mb-3 mt-4 rounded-lg border bg-muted/20 p-3">
+                    <p className="text-[11px] text-muted-foreground">Required Transfer Value</p>
+                    <p className="font-mono text-sm font-bold">
+                      ≈ {estimatedXlm} XLM <span className="text-xs font-normal text-muted-foreground">({formatKSh(feeBreakdown.totalExpectedMinor / 100)})</span>
+                    </p>
+                  </div>
 
                   <label htmlFor="stellar-tx" className="mb-2 mt-3 block text-xs font-semibold">Transaction reference</label>
                   <input
@@ -398,7 +471,7 @@ export default function JoinDao() {
                       setPendingWalletJoin(true);
                       account.login();
                     }}
-                    disabled={!account.ready || !account.configured || amount <= 0}
+                    disabled={!account.ready || !account.configured}
                     className="btn-ghost mt-5 w-full justify-center gap-2 py-3 text-sm font-bold"
                   >
                     <Wallet className="h-4 w-4" />

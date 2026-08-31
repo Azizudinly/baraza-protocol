@@ -179,6 +179,39 @@ impl TreasuryVaultContract {
             .publish((symbol_short!("deposit"),), (from, amount));
     }
 
+    /// Update multisig signers and approval threshold.
+    /// Caller must be an existing signer and provide authorization.
+    pub fn set_signers(
+        env: Env,
+        caller: Address,
+        new_signers: Vec<Address>,
+        new_threshold: u32,
+    ) {
+        caller.require_auth();
+        let config = Self::load_config(&env);
+        Self::assert_signer(&config.signers, &caller);
+
+        if new_signers.is_empty() {
+            panic!("at least one signer required");
+        }
+        if new_signers.len() > MAX_SIGNERS {
+            panic!("too many signers");
+        }
+        if new_threshold == 0 || new_threshold > new_signers.len() {
+            panic!("threshold out of range");
+        }
+
+        env.storage().instance().set(&DataKey::Config, &Config {
+            community_id: config.community_id,
+            token: config.token,
+            signers: new_signers,
+            threshold: new_threshold,
+        });
+
+        env.events()
+            .publish((symbol_short!("signers"),), (caller, new_threshold));
+    }
+
     pub fn balance(env: Env) -> i128 {
         let config = Self::load_config(&env);
         token::Client::new(&env, &config.token)
@@ -427,6 +460,58 @@ mod test {
             &h.signers,
             &1,
         );
+    }
+
+    #[test]
+    fn test_set_signers_progressive_upgrade() {
+        // Step 1: Initialize Founder 1-of-1 vault
+        let h = setup(1, 1);
+        h.token_admin_client.mint(&h.vault_address, &2_000);
+
+        let founder = h.signers.get(0).unwrap();
+        let config = h.client.get_config();
+        assert_eq!(config.threshold, 1);
+        assert_eq!(config.signers.len(), 1);
+
+        // Step 2: Progressive upgrade to 2-of-3 with community officers
+        let officer1 = Address::generate(&h.env);
+        let officer2 = Address::generate(&h.env);
+        let new_signers = vec![&h.env, founder.clone(), officer1.clone(), officer2.clone()];
+        h.client.set_signers(&founder, &new_signers, &2);
+
+        let updated_config = h.client.get_config();
+        assert_eq!(updated_config.threshold, 2);
+        assert_eq!(updated_config.signers.len(), 3);
+
+        // Step 3: Propose payout under 2-of-3 rules
+        let recipient = Address::generate(&h.env);
+        let proposal_id = h.client.propose(
+            &founder,
+            &recipient,
+            &500,
+            &String::from_str(&h.env, "grant payout"),
+        );
+
+        // Proposer approval only (1 of 2) -> execution fails
+        let prop = h.client.get_proposal(&proposal_id).unwrap();
+        assert_eq!(prop.approvals.len(), 1);
+
+        // Second officer approves -> execution succeeds
+        h.client.approve(&officer1, &proposal_id);
+        h.client.execute(&proposal_id);
+
+        let token_client = TokenClient::new(&h.env, &h.token);
+        assert_eq!(token_client.balance(&recipient), 500);
+        assert_eq!(token_client.balance(&h.vault_address), 1_500);
+    }
+
+    #[test]
+    #[should_panic(expected = "not a signer")]
+    fn test_set_signers_non_signer_rejected() {
+        let h = setup(2, 2);
+        let outsider = Address::generate(&h.env);
+        let new_signers = vec![&h.env, Address::generate(&h.env)];
+        h.client.set_signers(&outsider, &new_signers, &1);
     }
 }
 

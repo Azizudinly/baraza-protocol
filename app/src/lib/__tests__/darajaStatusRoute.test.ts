@@ -24,6 +24,7 @@ describe('mpesa transaction-status route', () => {
     vi.stubEnv('MPESA_INITIATOR_SECURITY_CREDENTIAL', 'encrypted-credential');
     vi.stubEnv('MPESA_STATUS_RESULT_URL', 'https://example.com/api/mpesa/status-result');
     vi.stubEnv('MPESA_STATUS_TIMEOUT_URL', 'https://example.com/api/mpesa/status-timeout');
+    vi.stubEnv('PAYMENT_ADAPTER_PROXY_SECRET', 'test-proxy-secret');
     vi.stubEnv('SUPABASE_URL', 'https://supabase.example');
     vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'service-key');
     vi.stubGlobal('window', undefined);
@@ -55,7 +56,10 @@ describe('mpesa transaction-status route', () => {
 
     const response = await transactionStatusHandler(new Request('https://example.com/api/mpesa/transaction-status', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        authorization: 'Bearer test-proxy-secret',
+      },
       body: JSON.stringify({ transactionId: 'ws_live123' }),
     }));
 
@@ -72,6 +76,16 @@ describe('mpesa transaction-status route', () => {
       expect.stringContaining('/mpesa/transactionstatus/v1/query'),
       expect.objectContaining({ method: 'POST' }),
     );
+  });
+
+  it('rejects unauthenticated requests with 401', async () => {
+    vi.stubEnv('PAYMENT_ADAPTER_PROXY_SECRET', 'test-proxy-secret');
+    const response = await transactionStatusHandler(new Request('https://example.com/api/mpesa/transaction-status', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ transactionId: 'ws_live123' }),
+    }));
+    expect(response.status).toBe(401);
   });
 });
 

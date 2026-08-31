@@ -51,7 +51,7 @@ Every task and subsystem in this document is rigorously evaluated against the go
 ### A.2 Multi-Sig Payment Attestation Service Writer Authorization
 - **Classification:** `[SAD-ALIGNED]` (SAD §5.4, ADR-009, Red Team Finding #2)
 - **Current Completion:** **70%** (`payment_attestation` contract requires admin authorization; single-signer server client written in `stellar-mint.ts`).
-- **Why it Aligns:** Prevents a single compromised Vercel server key from forging on-chain fiat payment receipts.
+- **Why it Aligns:** Prevents a single compromised server key from forging on-chain fiat payment receipts.
 - **Target Files (from Code Map):** `contracts/stellar/payment_attestation/src/lib.rs`, `app/api/cron/_lib/stellar-mint.ts`
 - **Pending Scope of Work:**
   1. Upgrade `PaymentAttestationContract` to store an authorized signers list `Vec<Address>` and require 2 distinct cryptographic signatures for `attest()`.
@@ -154,7 +154,7 @@ Every task and subsystem in this document is rigorously evaluated against the go
 
 ## Section F: Background Reconciliation & Durable Crons (ADR-004)
 
-### F.1 Durable Vercel Cron Reconciler & Backoff Scheduler
+### F.1 Durable Cron Reconciler & Backoff Scheduler
 - **Classification:** `[SAD-ALIGNED]` (SAD §5.3, ADR-004, Invariant I2)
 - **Current Completion:** **75%** (`promote-orders.ts` processes happy path; backoff escalation needs retry counter).
 - **Why it Aligns:** Eliminates brittle synchronous wait loops; reconciles dropped network callbacks reliably.
@@ -179,16 +179,6 @@ Every task and subsystem in this document is rigorously evaluated against the go
 
 ### G.2 Push Notifications & Multi-Channel Messaging Subscriptions
 - **Classification:** `[PROPOSED]`
-- **Engineering Rationale:** Community governance, voting deadlines, and dues collection rely heavily on timely member nudges. Members in emerging markets switch between Web Push, SMS, and WhatsApp based on connectivity.
-- **Target Files (from Code Map):** `app/api/user/notifications/`, `app/src/lib/notifications/`
-- **Pending Scope of Work:**
-  1. `POST /api/user/notifications/push-subscribe` — Register Web Push / FCM browser push subscription tokens for real-time mobile and desktop alerts.
-  2. `GET/PATCH /api/user/notifications/preferences` — Granular channel toggle matrix (`sms`, `whatsapp`, `push`, `email`) for:
-     - New proposal created in joined community
-     - Voting deadline reminder (24h before proposal closes)
-     - Dues cycle payment reminder (3 days before monthly due date)
-     - Dues payment confirmation & on-chain receipt notification
-     - Treasury multisig payout signature requests for elected officers
   3. `POST /api/notifications/dispatch` — Internal queue worker delivering scheduled alerts via Africa's Talking SMS, Evolution WhatsApp API, and Web Push.
 
 ### G.3 Community Workspace Features (Roadmaps, Suggestions & Bounties)
@@ -230,7 +220,7 @@ Every task and subsystem in this document is rigorously evaluated against the go
 
 ### G.7 Health, Readiness & Observability Endpoints
 - **Classification:** `[PROPOSED]`
-- **Engineering Rationale:** Mandatory for production uptime monitoring (Better Uptime, Datadog, Vercel synthetic checks) and zero-downtime deployments.
+- **Engineering Rationale:** Mandatory for production uptime monitoring (Better Uptime, Datadog, Cloudflare synthetic checks) and zero-downtime deployments.
 - **Pending Scope of Work:**
   1. `GET /api/health/live` — Lightweight liveness probe returning HTTP 200 `{ status: "ok" }`.
   2. `GET /api/health/ready` — Deep readiness probe validating database connectivity, Horizon RPC responsiveness, and partner payment gateway health.
@@ -238,9 +228,9 @@ Every task and subsystem in this document is rigorously evaluated against the go
 
 ### G.8 Token-Bucket Rate Limiting & Abuse Prevention Middleware
 - **Classification:** `[PROPOSED]`
-- **Engineering Rationale:** Protects paid third-party APIs (Privy, Anthropic, Africa's Talking) and serverless compute from abuse.
+- **Engineering Rationale:** Protects paid third-party APIs (Privy, Anthropic, Africa's Talking) and edge compute from abuse.
 - **Pending Scope of Work:**
-  1. Implement Upstash Redis / Vercel KV token-bucket rate limiting on `/api/stellar/create-payment-intent`, `/api/agent/chat`, and `/api/identity/*`.
+  1. Implement Cloudflare Rate Limiting / KV token-bucket rate limiting on `/api/stellar/create-payment-intent`, `/api/agent/chat`, and `/api/identity/*`.
 
 ---
 

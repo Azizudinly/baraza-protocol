@@ -18,6 +18,7 @@
 8. [SAD v1.0 & Holy Grail Subsystem Completion Scorecard](#8-sad-v10--holy-grail-subsystem-completion-scorecard)
 
 ---
+the
 
 ## 1. Master Repository File Inventory & Classification
 
@@ -49,8 +50,8 @@ Every non-asset, non-vendor source file in `baraza-protocol` has been inventorie
 | **API Route** | `app/api/payments/reconcile-brza-membership.ts` | BRZA fee reconciler | Read & Documented (§3.1) |
 | **API Route** | `app/api/webhooks/africastalking.ts` | Africa's Talking SMS/USSD notification ingress | Read & Documented (§3.2) |
 | **API Route** | `app/api/webhooks/kotani.ts` | Kotani Pay payment completion callback ingress | Read & Documented (§3.2) |
-| **API Route** | `app/api/cron/promote-orders.ts` | Vercel Cron status walker & Stellar mint batcher | Read & Documented (§3.3) |
-| **API Route** | `app/api/cron/settle-retro-allocations.ts` | Vercel Cron retro round allocation settler | Read & Documented (§3.3) |
+| **API Route** | `app/api/cron/promote-orders.ts` | Scheduled Cron status walker & Stellar mint batcher | Read & Documented (§3.3) |
+| **API Route** | `app/api/cron/settle-retro-allocations.ts` | Scheduled Cron retro round allocation settler | Read & Documented (§3.3) |
 | **API Route** | `app/api/cron/_lib/stellar-mint.ts` | Stellar SDK mint transaction builder | Read & Documented (§3.3) |
 | **API Route** | `app/api/identity/initiate-claim.ts` | Phone-to-wallet identity claim code generator | Read & Documented (§3.4) |
 | **API Route** | `app/api/identity/verify-claim.ts` | Identity claim code verifier & linker | Read & Documented (§3.4) |
@@ -321,7 +322,7 @@ sequenceDiagram
     autonumber
     actor Member as Community Member
     participant UI as Web / WhatsApp / USSD
-    participant API as Vercel API (/api/*)
+    participant API as Cloudflare Edge API (/api/*)
     participant Safaricom as Safaricom M-Pesa / Kotani
     participant DB as Supabase PostgreSQL
     participant Chain as Stellar Soroban Vault
@@ -353,7 +354,7 @@ sequenceDiagram
 | **2. Mobile Money Ingress** | Zero-trust verification & state machine (ADR-008, SAD §5) | 5-state Daraja machine with CIDR auth & Status Query | Wire Kotani Pay / Minisend live call sites (Memo 3 §3) | **85%** |
 | **3. Pricing & Billing** | Flexible/Dynamic Activation Fee (Memo 3 §4) | Hardcoded 500 KES fee logic | Add `activation_fee_minor` migration & dynamic calculator | **40%** |
 | **4. Accounting Model** | Double-Entry Conservation ($\sum D \equiv \sum C$, SAD §3.5) | Schema defined in SAD | Write ledger entry insert helper on order confirmation | **50%** |
-| **5. Reconciliation** | Durable Vercel Crons with backoff (ADR-004, Invariant I2) | Daily cron order promoter (`promote-orders.ts`) | Upgrade to 5-minute Pro cron cadence & 24h refund timeout | **75%** |
+| **5. Reconciliation** | Durable Crons with backoff (ADR-004, Invariant I2) | Daily cron order promoter (`promote-orders.ts`) | Upgrade to 5-minute Pro cron cadence & 24h refund timeout | **75%** |
 | **6. Compliance (Class G)** | SASRA License Verification Gate (ADR-006, Memo 3 §6) | Architecture specified in SAD | Build upload endpoint & admin review gate | **20%** |
 | **7. Identity & Wallets** | Invisible Privy MPC Wallets (HGD §1.3) | Privy phone OTP bridge with auth toggle | Domain whitelist configuration on Privy dashboard | **90%** |
 | **8. Governance** | Binary Voting & Tie Handling (SAD §8.1) | Soroban contract resolves ties to non-executable `Tied` | Connect UI voting component to `castVote` RPC | **85%** |

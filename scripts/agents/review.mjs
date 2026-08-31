@@ -38,7 +38,7 @@ const PERSONAS = {
   seo: {
     emoji: '🔍',
     title: 'SEO',
-    prompt: `You are a senior SEO engineer reviewing a Vite React SPA called Baraza Protocol (baraza-protocol.vercel.app).
+    prompt: `You are a senior SEO engineer reviewing a Vite React SPA called Baraza Protocol (barazaprotocol.com).
 
 Focus only on SEO-relevant changes in this PR diff:
 - Missing or wrong <title>, <meta name="description">, og:title, og:image, og:description tags
@@ -75,7 +75,7 @@ If no design issues exist in this diff, say so in one sentence.`,
   security: {
     emoji: '🔒',
     title: 'Security',
-    prompt: `You are a security engineer reviewing a TypeScript/React app that handles real financial transactions (M-Pesa, Stellar XLM, BRZA token) for African community groups. The app uses Supabase, Vercel API routes, and HMAC-signed payment intents.
+    prompt: `You are a security engineer reviewing a TypeScript/React app that handles real financial transactions (M-Pesa, Stellar XLM, BRZA token) for African community groups. The app uses Supabase, Cloudflare API routes, and HMAC-signed payment intents.
 
 Focus on real security issues in this PR diff — OWASP Top 10 and finance-specific risks:
 - Secrets, API keys, private keys, or seed phrases hardcoded or logged
@@ -95,7 +95,7 @@ If no security issues exist in this diff, say so in one sentence. Do NOT flag th
   code: {
     emoji: '🛠️',
     title: 'Code',
-    prompt: `You are a senior TypeScript/React engineer reviewing a Vite + React SPA with Vercel API routes. The project uses strict TypeScript, vitest, Tailwind CSS, Supabase, Stellar SDK, and Solana web3.js.
+    prompt: `You are a senior TypeScript/React engineer reviewing a Vite + React SPA with Cloudflare API routes. The project uses strict TypeScript, vitest, Tailwind CSS, Supabase, Stellar SDK, and Solana web3.js.
 
 Focus on real code quality issues in this PR diff:
 - TypeScript type errors or unsafe any/unknown usage that bypasses type safety

@@ -613,7 +613,7 @@ TS
 
 cat > "$DIR/src/adapters/baraza-api.ts" << 'TS'
 // Thin client for the baraza-protocol backend API
-const BASE_URL = process.env.BARAZA_API_URL ?? 'https://baraza-protocol.vercel.app';
+const BASE_URL = process.env.BARAZA_API_URL ?? 'https://barazaprotocol.com';
 
 export async function getMemberBalance(phone: string): Promise<string> {
   const res = await fetch(`${BASE_URL}/api/ussd/balance?phone=${encodeURIComponent(phone)}`);
@@ -654,7 +654,7 @@ cat > "$DIR/.env.example" << 'ENV'
 AT_API_KEY=
 AT_USERNAME=
 AT_SHORTCODE=
-BARAZA_API_URL=https://baraza-protocol.vercel.app
+BARAZA_API_URL=https://barazaprotocol.com
 ENV
 
 cat > "$DIR/package.json" << 'JSON'

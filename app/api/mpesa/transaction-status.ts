@@ -1,6 +1,6 @@
 export const config = { runtime: 'nodejs' };
 
-import { requestTransactionStatusQuery } from '../../../packages/integrations/src/daraja';
+import { requestTransactionStatusQuery } from '../../src/lib/payments/daraja.js';
 
 interface PaymentOrderRow {
   order_id: string;
@@ -52,9 +52,34 @@ async function setOrderStatusQuerySent(
   if (!res.ok) throw new Error('status_query_persist_failed');
 }
 
-export default async function handler(req: Request): Promise<Response> {
+function isAuthorized(req: Request): boolean {
+  const secret = process.env.PAYMENT_ADAPTER_PROXY_SECRET?.trim() || process.env.CRON_SECRET?.trim();
+  if (!secret) return false; // Fail-closed: MUST be configured
+  const auth = req.headers.get('authorization') || '';
+  const expected = `Bearer ${secret}`;
+  if (auth.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) diff |= auth.charCodeAt(i) ^ expected.charCodeAt(i);
+  return diff === 0;
+}
+
+async function handler(req: Request): Promise<Response> {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'access-control-allow-origin': '*',
+        'access-control-allow-methods': 'POST,OPTIONS',
+        'access-control-allow-headers': 'authorization,content-type',
+      },
+    });
+  }
   if (req.method !== 'POST') {
     return json({ error: 'method_not_allowed' }, { status: 405 });
+  }
+
+  if (!isAuthorized(req)) {
+    return json({ error: 'unauthorized', message: 'Unauthorized status query proxy call.' }, { status: 401 });
   }
 
   try {
@@ -104,3 +129,5 @@ export default async function handler(req: Request): Promise<Response> {
     return json({ ok: false, queryAccepted: false, error: message }, { status: 502 });
   }
 }
+
+export { handler as default, handler as POST, handler as OPTIONS };

@@ -8,7 +8,7 @@
 ---
 
 ## 1. Executive Summary & Architecture Boundary
-This PRD defines the complete user-facing product requirements, screens, state machines, and API integration boundaries for the Baraza Protocol client application. The frontend exists to present an intuitive, jargon-free interface for community members and leaders across East Africa, abstracting blockchain complexity behind invisible Privy MPC wallets while reliably consuming the hardened Vercel serverless backend.
+This PRD defines the complete user-facing product requirements, screens, state machines, and API integration boundaries for the Baraza Protocol client application. The frontend exists to present an intuitive, jargon-free interface for community members and leaders across East Africa, abstracting blockchain complexity behind invisible Privy MPC wallets while reliably consuming the hardened Cloudflare Pages and edge API backend.
 
 ---
 

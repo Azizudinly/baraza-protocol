@@ -23,7 +23,7 @@ The Baraza platform is partitioned across dedicated repositories to separate cor
 flowchart TD
     subgraph Repo1 ["1. baraza-protocol (Main Codebase)"]
         UI["Web App (React 18 + Vite)"]
-        API["API Layer (Vercel Serverless / Node.js & Edge)"]
+        API["API Layer (Cloudflare Pages & Workers / Edge & Node.js)"]
         Contracts["Smart Contracts (Soroban Rust & Base EVM)"]
         DB["Database (Supabase PostgreSQL 16 Migrations)"]
     end
@@ -84,7 +84,7 @@ sequenceDiagram
     autonumber
     actor Member as Community Member
     participant Web as Web / WhatsApp UI
-    participant API as Vercel Serverless (/api/*)
+    participant API as Cloudflare Edge API (/api/*)
     participant Carrier as Safaricom M-Pesa / Kotani
     participant DB as Supabase PostgreSQL
     participant Stellar as Soroban Vault Contract

@@ -289,13 +289,27 @@ const CreateCommunity: React.FC = () => {
       ? chain
       : 'stellar',
   );
-  const [form, setForm] = useState(() => {
+  const [form, setForm] = useState<{
+    name: string;
+    type: string;
+    fee: string;
+    feeType: 'one_time' | 'recurring_monthly' | 'free';
+    carrierPassThrough: boolean;
+    description: string;
+    phone: string;
+    quorum: string;
+    approvalThreshold: string;
+    votingPeriod: string;
+    treasuryPolicy: string;
+  }>(() => {
     const requestedType = searchParams.get('type') ?? '';
     const preset = isCommunityType(requestedType) ? GOVERNANCE_PRESETS[requestedType] : undefined;
     return {
       name: '',
       type: preset ? requestedType : '',
-      fee: '',
+      fee: '500',
+      feeType: 'recurring_monthly',
+      carrierPassThrough: true,
       description: '',
       phone: '',
       quorum: preset?.quorum ?? '51',
@@ -321,7 +335,7 @@ const CreateCommunity: React.FC = () => {
   const isValid = !!(
     form.name.trim() &&
     form.type &&
-    form.fee &&
+    (form.feeType === 'free' || form.fee !== '') &&
     form.description.trim() &&
     (!requiresPhone || normalisedPhone !== null)
   );
@@ -377,7 +391,7 @@ const CreateCommunity: React.FC = () => {
   /**
    * Charge the DAO setup fee via the M-Pesa simulator, then create the
    * community record. Falls back to direct creation if the simulator endpoint
-   * is unreachable (local dev without `vercel dev`) so the form still works
+   * is unreachable (local dev fallback) so the form still works
    * - the fee is then a paper-only acknowledgement, not enforced.
    */
   async function chargeCreationFee(): Promise<{ orderId: string; persisted: boolean }> {
@@ -466,7 +480,11 @@ const CreateCommunity: React.FC = () => {
           name: form.name,
           type: form.type,
           description: form.description,
-          membershipFee: Number(form.fee),
+          membershipFee: form.feeType === 'free' ? 0 : Number(form.fee),
+          activationFeeMinor: form.feeType === 'free' ? 0 : Math.round(Number(form.fee || 0) * 100),
+          feeType: form.feeType,
+          carrierPassThrough: form.carrierPassThrough,
+          currency: account.country.currency,
           chain: selectedCommunityChain,
           quorumPct: Number(form.quorum),
           approvalThresholdPct: Number(form.approvalThreshold),
@@ -643,23 +661,77 @@ const CreateCommunity: React.FC = () => {
                 />
               </div>
 
-              {/* Fee */}
+              {/* Fee Model & Amount */}
               <div>
                 <label className="block text-xs font-semibold mb-2">
-                  Monthly dues ({account.country.currency})
+                  Membership dues model
                 </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-medium">{account.country.currency}</span>
-                  <input
-                    type="number"
-                    name="fee"
-                    value={form.fee}
-                    onChange={handleChange}
-                    placeholder="e.g. 500"
-                    min="0"
-                    className="w-full rounded-xl pl-14 pr-4 py-3 text-sm outline-none border"
-                  />
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, feeType: 'recurring_monthly', fee: form.fee === '0' || !form.fee ? '500' : form.fee })}
+                    className={`p-3 rounded-xl border text-xs font-medium text-center transition-colors ${
+                      form.feeType === 'recurring_monthly' ? 'border-primary bg-primary/10 font-bold text-primary' : 'hover:bg-muted/50'
+                    }`}
+                  >
+                    Monthly Dues
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, feeType: 'one_time', fee: form.fee === '0' || !form.fee ? '500' : form.fee })}
+                    className={`p-3 rounded-xl border text-xs font-medium text-center transition-colors ${
+                      form.feeType === 'one_time' ? 'border-primary bg-primary/10 font-bold text-primary' : 'hover:bg-muted/50'
+                    }`}
+                  >
+                    One-Time Fee
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, feeType: 'free', fee: '0' })}
+                    className={`p-3 rounded-xl border text-xs font-medium text-center transition-colors ${
+                      form.feeType === 'free' ? 'border-primary bg-primary/10 font-bold text-primary' : 'hover:bg-muted/50'
+                    }`}
+                  >
+                    Free / Zero Dues
+                  </button>
                 </div>
+
+                {form.feeType !== 'free' ? (
+                  <>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-medium">{account.country.currency}</span>
+                      <input
+                        type="number"
+                        name="fee"
+                        value={form.fee}
+                        onChange={handleChange}
+                        placeholder="e.g. 500"
+                        min="1"
+                        className="w-full rounded-xl pl-14 pr-4 py-3 text-sm outline-none border"
+                      />
+                    </div>
+                    <div className="mt-3 flex items-center justify-between rounded-xl border p-3 bg-muted/10">
+                      <div className="pr-3">
+                        <p className="text-xs font-semibold">Pass mobile money carrier processing cost (0.5%) to members</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {form.carrierPassThrough
+                            ? 'Members pay dues + 0.5% carrier cost. Community treasury receives 100% of base dues.'
+                            : 'Community treasury absorbs the 0.5% carrier cost upon deposit.'}
+                        </p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={form.carrierPassThrough}
+                        onChange={(e) => setForm({ ...form, carrierPassThrough: e.target.checked })}
+                        className="h-4 w-4 rounded accent-primary cursor-pointer"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <div className="rounded-xl border p-3 bg-muted/20 text-xs text-muted-foreground">
+                    Members can join this community for free without paying activation dues.
+                  </div>
+                )}
               </div>
 
               {/* Description */}
