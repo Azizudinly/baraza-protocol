@@ -230,5 +230,28 @@ describe('Hardened Fixes & Defensive Invariants Stress Suite', () => {
         expect(res.status).toBe(201);
       }
     });
+
+    it('serializes 20 concurrent Stellar relayer transactions monotonically without sequence collision (RT-04)', async () => {
+      const { withStellarNonceMutex, setBaseSequence } = await import('../../../api/_lib/stellar-nonce-mutex.js');
+      setBaseSequence(1000n);
+
+      const allocatedSequences: bigint[] = [];
+      const jobs = Array.from({ length: 20 }, (_, i) =>
+        withStellarNonceMutex(async (seq) => {
+          if (seq !== null) allocatedSequences.push(seq);
+          return `tx_${i}`;
+        }),
+      );
+
+      const results = await Promise.all(jobs);
+      expect(results).toHaveLength(20);
+      expect(allocatedSequences).toHaveLength(20);
+
+      // Verify strict monotonicity (no collisions)
+      for (let i = 1; i < allocatedSequences.length; i++) {
+        expect(allocatedSequences[i]).toBe(allocatedSequences[i - 1] + 1n);
+      }
+    });
   });
 });
+

@@ -41,6 +41,8 @@ export const STAGE_META: Record<ProposalLifecycleStage, StageMeta> = {
   expired:   { label: 'Expired',   icon: XCircle,      className: 'bg-muted text-muted-foreground',     votable: false, terminal: true  },
   canceled:  { label: 'Canceled',  icon: Ban,          className: 'bg-muted text-muted-foreground',     votable: false, terminal: true  },
   vetoed:    { label: 'Vetoed',    icon: ShieldOff,    className: 'bg-destructive/15 text-destructive', votable: false, terminal: true  },
+  tied:      { label: 'Tied',      icon: XCircle,      className: 'bg-muted text-muted-foreground',     votable: false, terminal: true  },
+  tied_extended: { label: 'Deliberation Extended (48h)', icon: Clock3, className: 'bg-accent/15 text-accent font-semibold', votable: true, terminal: false },
 };
 
 /**
@@ -52,8 +54,11 @@ export const STAGE_META: Record<ProposalLifecycleStage, StageMeta> = {
  * surfacing a quiet "Pending" pill that won't accept votes.
  */
 export function inferStage(status: string): ProposalLifecycleStage {
-  if (status === 'completed') return 'executed';
+  if (status === 'completed' || status === 'executed') return 'executed';
   if (status === 'failed') return 'defeated';
+  if (status === 'passed' || status === 'succeeded') return 'succeeded';
   if (status === 'active') return 'active';
+  if (status === 'tied_extended') return 'tied_extended';
+  if (status === 'tied') return 'tied';
   return 'pending';
 }

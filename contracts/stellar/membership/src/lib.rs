@@ -133,6 +133,10 @@ impl MembershipContract {
             .get(&DataKey::Count(community_id))
             .unwrap_or(0)
     }
+
+    pub fn active_count(env: Env, community_id: String) -> u32 {
+        Self::member_count(env, community_id)
+    }
 }
 
 #[cfg(test)]

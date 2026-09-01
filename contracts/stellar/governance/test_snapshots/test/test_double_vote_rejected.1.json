@@ -229,6 +229,22 @@
                     },
                     {
                       "key": {
+                        "symbol": "quorum_threshold_bps"
+                      },
+                      "val": {
+                        "u32": 2000
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "snapshot_member_count"
+                      },
+                      "val": {
+                        "u32": 5
+                      }
+                    },
+                    {
+                      "key": {
                         "symbol": "status"
                       },
                       "val": {
@@ -237,6 +253,14 @@
                             "symbol": "Active"
                           }
                         ]
+                      }
+                    },
+                    {
+                      "key": {
+                        "symbol": "tie_extended"
+                      },
+                      "val": {
+                        "bool": false
                       }
                     },
                     {
