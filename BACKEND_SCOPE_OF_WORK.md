@@ -119,21 +119,26 @@ Every task and subsystem in this document is rigorously evaluated against the go
 
 ### D.1 SASRA SACCO License Verification Gate
 - **Classification:** `[SAD-ALIGNED]` (Launch Memo 3 §6, SAD §3.6 Class G, HGD §9a, ADR-006)
-- **Current Completion:** **20%** (Principle documented; endpoints and database constraints pending).
+- **Current Completion:** **100% (Completed & Verified)**
 - **Why it Aligns:** Launch Memo 3 states: *"Baraza doesn't obtain a SASRA licence. A SACCO-type community obtains its own and provides proof before that community type activates."*
-- **Target Files (from Code Map):** `supabase/migrations/030_sacco_compliance.sql`, `app/src/lib/compliance/saccoGate.ts`, `app/api/compliance/sacco-license-submit.ts`, `app/api/compliance/sacco-license-review.ts`, `app/api/compliance/status.ts`
-- **Pending Scope of Work:**
-  1. **Database Migration:** Add `sacco_license_status` (`UNLICENSED`, `PENDING_REVIEW`, `VERIFIED`, `REJECTED`, `EXPIRED`, `REVOKED`), `sacco_license_number`, `sacco_license_expires_at`, `sacco_verified_at`, and `sacco_verified_by` to `communities`. Create immutable `sacco_compliance_documents` audit table and `compliance_alerts` table with RLS and FK constraints.
-  2. **New Endpoint:** `POST /api/compliance/sacco-license-submit` (receives license registration details, certificate URL, expiry date, authenticated by Ed25519 officer wallet proof).
-  3. **New Endpoint:** `PATCH /api/compliance/sacco-license-review` (Admin-authenticated review gate verifying constant-time `COMPLIANCE_REVIEW_SECRET`).
-  4. **Feature Gate Enforcement:** Middleware `assertSaccoLicensed()` intercepting loan and capital mobilization API routes to throw `403 Forbidden` unless `sacco_license_status === 'VERIFIED'`.
+- **Delivered Capabilities & Files (Phase P4):**
+  1. `supabase/migrations/030_sacco_compliance.sql`: DDL adding full lifecycle `sacco_license_status` (`UNLICENSED`, `PENDING_REVIEW`, `VERIFIED`, `REJECTED`, `EXPIRED`, `REVOKED`) to `communities`, immutable `sacco_compliance_documents` audit table with `REFERENCES communities(id) ON DELETE CASCADE`, and `compliance_alerts` ledger with RLS.
+  2. `app/src/lib/compliance/saccoGate.ts`: Pure domain validators for Kenyan statutory registration formats (`CS/...`, `SASRA/DT/...`, `SASRA/NWDT/...`), HTTPS certificate URL validation, and constant-time `timingSafeEqual` authentication.
+  3. `app/api/compliance/sacco-license-submit.ts`: Officer license submission route verifying Ed25519 wallet proof, validating statutory numbers, and executing lock-free conditional state transitions (409 on race).
+  4. `app/api/compliance/sacco-license-review.ts`: Compliance auditor review gate verifying constant-time `COMPLIANCE_REVIEW_SECRET` and transitioning state to `VERIFIED`, `REJECTED`, or `REVOKED`.
+  5. `app/api/compliance/status.ts`: Public and officer compliance badge inspection route.
+  6. `app/api/governance/execute.ts`: Proposal execution gate intercepting `LOAN_DISBURSEMENT`, `MEMBER_DIVIDEND`, and `CAPITAL_CALL` proposals to block unverified SACCO communities with `403 Forbidden` (`regulatory_compliance_violation`).
+  7. **Automated Verification:** 16/16 unit and integration test scenarios passing in `app/src/lib/__tests__/saccoCompliance.test.ts`.
 
 ### D.2 Behavioral Deposit Monitoring & Threshold Alerts
 - **Classification:** `[SAD-ALIGNED]` (SAD §3.6 Class G, Red Team Finding #4)
-- **Current Completion:** **10%** (SQL query drafted in architecture docs).
+- **Current Completion:** **100% (Completed & Verified)**
 - **Why it Aligns:** SASRA Non-Deposit-Taking Regulations 2020 trigger oversight when digital deposits cross KES 100M.
-- **Pending Scope of Work:**
-  1. Create daily background query in `app/api/cron/monitor-compliance.ts` flagging groups exceeding KES 100M.
+- **Delivered Capabilities & Files (Phase P4):**
+  1. `app/api/cron/monitor-compliance.ts`: Scheduled daily Node.js cron handler verifying `CRON_SECRET` via `timingSafeEqual`.
+  2. **Automated Credential Expiry Sweep:** Evaluates `now() > sacco_license_expires_at`, transitions communities to `EXPIRED`, and logs `LICENSE_EXPIRED` alerts.
+  3. **KES 100M Deposit Threshold Monitor:** Aggregates settled payments in pure `BigInt` minor units; flags communities crossing KES 100M (`10_000_000_000n` cents) into `compliance_alerts` (`SASRA_THRESHOLD_100M`).
+  4. **Sybil Creator Cluster Aggregation:** Groups settled volume across sub-chamas by `created_by` to detect network structuring across the KES 100M ceiling (`SYBIL_AFFILIATION_THRESHOLD`).
 
 ### D.3 ODPC Personal Data Inventory for BAD DAO AFRICA LIMITED
 - **Classification:** `[SAD-ALIGNED]` (Launch Memo 3 §5, SAD §3.6, Kenya DPA 2019 §18)

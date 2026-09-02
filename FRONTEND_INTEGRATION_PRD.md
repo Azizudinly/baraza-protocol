@@ -142,6 +142,26 @@ flowchart LR
   - `POST /api/payment-orders/[id]/dispute`.
   - `GET /api/communities/[id]/audit-log`.
 
+### 3.10 SACCO Statutory Regulatory Compliance Portal (`SaccoCompliancePortal.tsx`)
+- **Frontend Requirements:**
+  - **Compliance Badge:** Public community profile header displays real-time statutory status badge:
+    - `Verified SACCO` (Green with shield icon, tooltip showing Registration Number & Expiration Date).
+    - `Verification Pending` (Amber with pulsing spinner, *"Under SASRA audit review"*).
+    - `Unlicensed Cooperative` (Red warning, *"Statutory verification required before peer lending activates"*).
+    - `License Expired` / `License Revoked` (Muted red alert with statutory re-certification CTA).
+  - **Officer License Submission Wizard:**
+    - Form for elected officers to input Cooperative Registration No (`CS/...`) or SASRA License (`SASRA/DT/...`, `SASRA/NWDT/...`).
+    - File upload widget uploading PDF/image certificate to Cloudflare R2 / Supabase Storage and generating an HTTPS certificate URL.
+    - Expiration date picker enforcing future statutory date.
+    - Submits with Ed25519 officer wallet proof signature (`POST /api/compliance/sacco-license-submit`).
+  - **Restricted Lending / Capital CTA State:**
+    - On loan creation or dividend payout forms, if community is not verified, the submit CTA is disabled with an explanatory tooltip:
+      *"Peer lending and capital mobilization are restricted under SASRA 2020 Regulations until this SACCO verifies its statutory license."*
+- **Backend Contracts:**
+  - `POST /api/compliance/sacco-license-submit`
+  - `PATCH /api/compliance/sacco-license-review`
+  - `GET /api/compliance/status?communityId=[id]`
+
 ---
 
 ## 4. Design Aesthetics & Error Handling Guidelines

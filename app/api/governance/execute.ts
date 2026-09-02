@@ -8,6 +8,7 @@
  */
 
 import { getWalletProof, verifyWalletProof } from '../_lib/wallet-proof.js';
+import { evaluateSaccoGate } from '../../src/lib/compliance/saccoGate.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -107,6 +108,43 @@ export default async function handler(req: Request): Promise<Response> {
         { error: 'already_executed', message: 'Proposal has already been executed' },
         { status: 409 },
       );
+    }
+
+    // 1.5 SASRA Regulatory Compliance Gate (Invariant I-REG-1 / ZUE Theorem)
+    if (proposal.community_id) {
+      const commRes = await fetch(
+        `${supabaseUrl}/rest/v1/communities?id=eq.${encodeURIComponent(proposal.community_id)}&select=id,type,sacco_license_status,sacco_license_expires_at`,
+        {
+          headers: {
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+          },
+        },
+      );
+      if (commRes.ok) {
+        const comms = await commRes.json();
+        if (Array.isArray(comms) && comms.length > 0) {
+          const comm = comms[0];
+          const gate = evaluateSaccoGate(comm);
+          const isRegulatedOp =
+            proposal.proposal_type === 'LOAN_DISBURSEMENT' ||
+            proposal.proposal_type === 'MEMBER_DIVIDEND' ||
+            proposal.proposal_type === 'CAPITAL_CALL' ||
+            comm.type === 'sacco' ||
+            comm.type === 'housing';
+
+          if (isRegulatedOp && !gate.allowed) {
+            return json(
+              {
+                error: 'regulatory_compliance_violation',
+                message: `Proposal execution blocked: Community requires a verified SASRA license. Status: '${gate.status}'.`,
+                sacco_license_status: gate.status,
+              },
+              { status: 403 },
+            );
+          }
+        }
+      }
     }
 
     const fundingAmountMinor = Number(proposal.funding_amount_minor || 0);
