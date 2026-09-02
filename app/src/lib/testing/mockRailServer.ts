@@ -8,27 +8,106 @@
  * 4. Paystack (Card/Bank charge initialization & webhooks)
  * 5. Africa's Talking (SMS delivery gateway)
  * 6. Stellar Horizon (Account balance, sequence number, and transaction submission)
+ *
+ * Includes S&P 500 Enterprise Chaos Engineering Engine:
+ * - Deterministic / probabilistic fault injection (500, 502, 503, 429)
+ * - Network latency jitter simulation ([min, max] ms)
+ * - Abrupt socket termination / connection drop simulation
+ * - Active asynchronous telco callback dispatch engine
  */
 
 import http from 'node:http';
 import crypto from 'node:crypto';
 import { AddressInfo } from 'node:net';
 
+export interface ChaosConfig {
+  enabled: boolean;
+  failureRate?: number; // 0.0 to 1.0
+  statusCode?: number; // 500, 502, 503, 504, 429
+  errorPayload?: unknown;
+  latencyJitterMs?: [number, number]; // [min, max] delay
+  dropConnection?: boolean; // destroy socket immediately
+  insufficientFloat?: boolean;
+}
+
 export interface MockRailServerInstance {
   server: http.Server;
   url: string;
   port: number;
   stop: () => Promise<void>;
+  setChaos: (config: Partial<ChaosConfig>) => void;
+  clearChaos: () => void;
   generateKotaniSignature: (payload: unknown, secret: string) => string;
   generatePaystackSignature: (payload: unknown, secret: string) => string;
   generateMinisendSignature: (payload: unknown, secret: string) => string;
+  triggerAsyncWebhook: (
+    targetUrl: string,
+    payload: unknown,
+    secret: string,
+    provider?: 'kotani' | 'minisend' | 'paystack',
+    delayMs?: number,
+  ) => Promise<Response>;
 }
 
 export async function startMockRailServer(preferredPort = 0): Promise<MockRailServerInstance> {
+  let currentChaos: ChaosConfig = { enabled: false };
+
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
     const pathname = url.pathname;
     const method = req.method?.toUpperCase() || 'GET';
+
+    // -------------------------------------------------------------------------
+    // 0. S&P 500 Chaos Engineering & Fault Injection Pipeline
+    // -------------------------------------------------------------------------
+    if (currentChaos.enabled && method !== 'OPTIONS') {
+      // 0a. Latency Jitter Injection
+      if (currentChaos.latencyJitterMs) {
+        const [min, max] = currentChaos.latencyJitterMs;
+        const delay = Math.floor(Math.random() * (max - min + 1)) + min;
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+
+      // 0b. Connection Drop / Socket Abrupt Reset
+      if (currentChaos.dropConnection) {
+        req.socket.destroy();
+        return;
+      }
+
+      // 0c. Telco / Liquidity Float Exhaustion
+      if (currentChaos.insufficientFloat) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          error: 'INSUFFICIENT_FLOAT',
+          message: 'Upstream liquidity float depleted for carrier rail',
+          code: 'FLOAT_EXHAUSTED_5001',
+        }));
+        return;
+      }
+
+      const shouldFail = (currentChaos.statusCode !== undefined || currentChaos.failureRate !== undefined)
+        ? (currentChaos.failureRate !== undefined ? Math.random() < currentChaos.failureRate : true)
+        : false;
+
+      if (shouldFail) {
+        const status = currentChaos.statusCode || 503;
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (status === 429) {
+          headers['Retry-After'] = '2';
+          headers['X-RateLimit-Limit'] = '100';
+          headers['X-RateLimit-Remaining'] = '0';
+        }
+        res.writeHead(status, headers);
+        res.end(JSON.stringify(
+          currentChaos.errorPayload || {
+            error: 'upstream_service_unavailable',
+            message: 'Upstream payment rail gateway temporarily unavailable',
+            retryable: true,
+          },
+        ));
+        return;
+      }
+    }
 
     // Read body if POST/PUT/PATCH
     let bodyText = '';
@@ -49,12 +128,13 @@ export async function startMockRailServer(preferredPort = 0): Promise<MockRailSe
       }
     }
 
-    const sendJson = (status: number, data: unknown) => {
+    const sendJson = (status: number, data: unknown, extraHeaders: Record<string, string> = {}) => {
       res.writeHead(status, {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': '*',
+        ...extraHeaders,
       });
       res.end(JSON.stringify(data));
     };
@@ -82,8 +162,43 @@ export async function startMockRailServer(preferredPort = 0): Promise<MockRailSe
 
     if (pathname.includes('/mpesa/stkpush/v1/processrequest')) {
       const checkoutId = 'ws_CO_MOCK_' + Date.now();
+      const merchantId = 'merch_' + Date.now();
+
+      // Automated asynchronous telco callback dispatch if CallBackURL provided
+      if (typeof parsedBody.CallBackURL === 'string' && parsedBody.CallBackURL.startsWith('http')) {
+        const callbackUrl = parsedBody.CallBackURL;
+        const isFailure = parsedBody.simulateUserCancel === true;
+        const callbackPayload = {
+          Body: {
+            stkCallback: {
+              MerchantRequestID: merchantId,
+              CheckoutRequestID: checkoutId,
+              ResultCode: isFailure ? 1032 : 0,
+              ResultDesc: isFailure ? 'Request cancelled by user' : 'The service request is processed successfully.',
+              CallbackMetadata: isFailure ? undefined : {
+                Item: [
+                  { Name: 'Amount', Value: parsedBody.Amount || 1500 },
+                  { Name: 'MpesaReceiptNumber', Value: 'QWE' + Date.now().toString().slice(-7) },
+                  { Name: 'TransactionDate', Value: Number(new Date().toISOString().replace(/\D/g, '').slice(0, 14)) },
+                  { Name: 'PhoneNumber', Value: parsedBody.PhoneNumber || 254712345678 },
+                ],
+              },
+            },
+          },
+        };
+
+        const delay = typeof parsedBody.callbackDelayMs === 'number' ? parsedBody.callbackDelayMs : 50;
+        setTimeout(() => {
+          fetch(callbackUrl, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(callbackPayload),
+          }).catch(() => {});
+        }, delay);
+      }
+
       sendJson(200, {
-        MerchantRequestID: 'merch_' + Date.now(),
+        MerchantRequestID: merchantId,
         CheckoutRequestID: checkoutId,
         ResponseCode: '0',
         ResponseDescription: 'Success. Request accepted for processing',
@@ -259,6 +374,14 @@ export async function startMockRailServer(preferredPort = 0): Promise<MockRailSe
   const port = addr.port;
   const url = `http://127.0.0.1:${port}`;
 
+  const setChaos = (config: Partial<ChaosConfig>): void => {
+    currentChaos = { ...currentChaos, ...config, enabled: config.enabled ?? true };
+  };
+
+  const clearChaos = (): void => {
+    currentChaos = { enabled: false };
+  };
+
   const generateKotaniSignature = (payload: unknown, secret: string): string => {
     const data = typeof payload === 'string' ? payload : JSON.stringify(payload);
     return crypto.createHmac('sha256', secret).update(data).digest('hex');
@@ -274,6 +397,36 @@ export async function startMockRailServer(preferredPort = 0): Promise<MockRailSe
     return crypto.createHmac('sha256', secret).update(data).digest('hex');
   };
 
+  const triggerAsyncWebhook = async (
+    targetUrl: string,
+    payload: unknown,
+    secret: string,
+    provider: 'kotani' | 'minisend' | 'paystack' = 'kotani',
+    delayMs = 50,
+  ): Promise<Response> => {
+    if (delayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+
+    const rawBody = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    const headers: Record<string, string> = { 'content-type': 'application/json' };
+
+    if (provider === 'kotani') {
+      headers['x-kotani-signature'] = generateKotaniSignature(rawBody, secret);
+    } else if (provider === 'minisend') {
+      headers['x-minisend-signature'] = generateMinisendSignature(rawBody, secret);
+      headers['x-minisend-timestamp'] = Math.floor(Date.now() / 1000).toString();
+    } else if (provider === 'paystack') {
+      headers['x-paystack-signature'] = generatePaystackSignature(rawBody, secret);
+    }
+
+    return fetch(targetUrl, {
+      method: 'POST',
+      headers,
+      body: rawBody,
+    });
+  };
+
   return {
     server,
     url,
@@ -283,8 +436,11 @@ export async function startMockRailServer(preferredPort = 0): Promise<MockRailSe
         server.close((err) => (err ? reject(err) : resolve()));
       });
     },
+    setChaos,
+    clearChaos,
     generateKotaniSignature,
     generatePaystackSignature,
     generateMinisendSignature,
+    triggerAsyncWebhook,
   };
 }
