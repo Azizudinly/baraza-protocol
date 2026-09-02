@@ -6,9 +6,6 @@ import {
   calculateExpectedFiat,
   evaluateFxSlippage,
   isWithinTelcoLimit,
-  usdcToMicroUnits,
-  microUnitsToUsdc,
-  TELCO_MAX_SINGLE_TX_MINOR,
 } from '../payments/slippage';
 import { toE164, isValidE164 } from '../phone';
 
