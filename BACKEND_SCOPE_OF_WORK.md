@@ -121,12 +121,12 @@ Every task and subsystem in this document is rigorously evaluated against the go
 - **Classification:** `[SAD-ALIGNED]` (Launch Memo 3 §6, SAD §3.6 Class G, HGD §9a, ADR-006)
 - **Current Completion:** **20%** (Principle documented; endpoints and database constraints pending).
 - **Why it Aligns:** Launch Memo 3 states: *"Baraza doesn't obtain a SASRA licence. A SACCO-type community obtains its own and provides proof before that community type activates."*
-- **Target Files (from Code Map):** `app/api/compliance/sacco-license.ts`, `supabase/migrations/`
+- **Target Files (from Code Map):** `supabase/migrations/030_sacco_compliance.sql`, `app/src/lib/compliance/saccoGate.ts`, `app/api/compliance/sacco-license-submit.ts`, `app/api/compliance/sacco-license-review.ts`, `app/api/compliance/status.ts`
 - **Pending Scope of Work:**
-  1. **Database Migration:** Add `sacco_license_status` (`UNLICENSED`, `PENDING_REVIEW`, `VERIFIED`, `REJECTED`), `sacco_license_number`, and `sacco_cert_url` to `communities`.
-  2. **New Endpoint:** `POST /api/compliance/sacco-license-submit` (receives license details and certificate document URL).
-  3. **New Endpoint:** `POST /api/compliance/sacco-license-verify` (Admin-authenticated review transition).
-  4. **Feature Gate Enforcement:** Intercept loan and capital mobilization API routes to throw `403 Forbidden` unless `sacco_license_status === 'VERIFIED'`.
+  1. **Database Migration:** Add `sacco_license_status` (`UNLICENSED`, `PENDING_REVIEW`, `VERIFIED`, `REJECTED`, `EXPIRED`, `REVOKED`), `sacco_license_number`, `sacco_license_expires_at`, `sacco_verified_at`, and `sacco_verified_by` to `communities`. Create immutable `sacco_compliance_documents` audit table and `compliance_alerts` table with RLS and FK constraints.
+  2. **New Endpoint:** `POST /api/compliance/sacco-license-submit` (receives license registration details, certificate URL, expiry date, authenticated by Ed25519 officer wallet proof).
+  3. **New Endpoint:** `PATCH /api/compliance/sacco-license-review` (Admin-authenticated review gate verifying constant-time `COMPLIANCE_REVIEW_SECRET`).
+  4. **Feature Gate Enforcement:** Middleware `assertSaccoLicensed()` intercepting loan and capital mobilization API routes to throw `403 Forbidden` unless `sacco_license_status === 'VERIFIED'`.
 
 ### D.2 Behavioral Deposit Monitoring & Threshold Alerts
 - **Classification:** `[SAD-ALIGNED]` (SAD §3.6 Class G, Red Team Finding #4)
