@@ -18,6 +18,7 @@
 8. [SAD v1.0 & Holy Grail Subsystem Completion Scorecard](#8-sad-v10--holy-grail-subsystem-completion-scorecard)
 
 ---
+the
 
 ## 1. Master Repository File Inventory & Classification
 
@@ -53,8 +54,8 @@ Every non-asset, non-vendor source file in `baraza-protocol` has been inventorie
 | **API Route** | `app/api/payments/reconcile-brza-membership.ts` | BRZA fee reconciler | Read & Documented (§3.1) |
 | **API Route** | `app/api/webhooks/africastalking.ts` | Africa's Talking SMS/USSD notification ingress | Read & Documented (§3.2) |
 | **API Route** | `app/api/webhooks/kotani.ts` | Kotani Pay payment completion callback ingress | Read & Documented (§3.2) |
-| **API Route** | `app/api/cron/promote-orders.ts` | Vercel Cron status walker & Stellar mint batcher | Read & Documented (§3.3) |
-| **API Route** | `app/api/cron/settle-retro-allocations.ts` | Vercel Cron retro round allocation settler | Read & Documented (§3.3) |
+| **API Route** | `app/api/cron/promote-orders.ts` | Scheduled Cron status walker & Stellar mint batcher | Read & Documented (§3.3) |
+| **API Route** | `app/api/cron/settle-retro-allocations.ts` | Scheduled Cron retro round allocation settler | Read & Documented (§3.3) |
 | **API Route** | `app/api/cron/_lib/stellar-mint.ts` | Stellar SDK mint transaction builder | Read & Documented (§3.3) |
 | **API Route** | `app/api/identity/initiate-claim.ts` | Phone-to-wallet identity claim code generator | Read & Documented (§3.4) |
 | **API Route** | `app/api/identity/verify-claim.ts` | Identity claim code verifier & linker | Read & Documented (§3.4) |
