@@ -191,5 +191,11 @@ export default async function handler(req: Request): Promise<Response> {
     return json({ received: true, changed: true, status: 'PAYMENT_EXPIRED' });
   }
 
+  if (kotaniStatus === 'pending' || kotaniStatus === 'processing' || kotaniStatus === 'initiated') {
+    if (order.status === 'PROVIDER_PENDING_VERIFICATION') return json({ received: true, changed: false });
+    await patchOrder(supabaseUrl, serviceKey, order.order_id, { status: 'PROVIDER_PENDING_VERIFICATION' });
+    return json({ received: true, changed: true, status: 'PROVIDER_PENDING_VERIFICATION' });
+  }
+
   return json({ received: true, changed: false, kotaniStatus });
 }

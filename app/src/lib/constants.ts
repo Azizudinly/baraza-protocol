@@ -67,7 +67,9 @@ export type ProposalLifecycleStage =
   | 'executed'
   | 'expired'
   | 'canceled'
-  | 'vetoed';
+  | 'vetoed'
+  | 'tied'
+  | 'tied_extended';
 
 export interface Decision {
   id: string;

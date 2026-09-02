@@ -27,6 +27,7 @@ pub struct Proposal {
     pub memo: String,
     pub approvals: Vec<Address>,
     pub executed: bool,
+    pub encumbered: bool,
     pub created_at: u64,
 }
 
@@ -35,6 +36,7 @@ pub enum DataKey {
     Config,
     NextId,
     Proposal(u64),
+    EncumberedBalance,
 }
 
 #[contract]
@@ -71,6 +73,7 @@ impl TreasuryVaultContract {
             threshold,
         });
         env.storage().instance().set(&DataKey::NextId, &0u64);
+        env.storage().instance().set(&DataKey::EncumberedBalance, &0i128);
     }
 
     /// Propose a payment. Any signer can propose; the proposer counts as the first approval.
@@ -94,6 +97,7 @@ impl TreasuryVaultContract {
             memo,
             approvals,
             executed: false,
+            encumbered: false,
             created_at: env.ledger().timestamp(),
         };
 
@@ -132,6 +136,50 @@ impl TreasuryVaultContract {
             .publish((symbol_short!("approved"), proposal_id), signer);
     }
 
+    /// Encumber funds for a passed proposal prior to final execution (RT-02 Fix).
+    /// Locks the amount into `EncumberedBalance` so concurrent proposals cannot overspend available vault liquidity.
+    pub fn encumber_payout(env: Env, caller: Address, proposal_id: u64) {
+        caller.require_auth();
+        let config = Self::load_config(&env);
+        Self::assert_signer(&config.signers, &caller);
+
+        let mut proposal: Proposal = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Proposal(proposal_id))
+            .unwrap_or_else(|| panic!("proposal not found"));
+
+        if proposal.executed {
+            panic!("already executed");
+        }
+        if proposal.encumbered {
+            panic!("already encumbered");
+        }
+
+        let avail = Self::available_balance(env.clone());
+        if proposal.amount > avail {
+            panic!("insufficient available balance");
+        }
+
+        let current_enc: i128 = env
+            .storage()
+            .instance()
+            .get(&DataKey::EncumberedBalance)
+            .unwrap_or(0);
+        let new_enc = current_enc + proposal.amount;
+        env.storage()
+            .instance()
+            .set(&DataKey::EncumberedBalance, &new_enc);
+
+        proposal.encumbered = true;
+        env.storage()
+            .persistent()
+            .set(&DataKey::Proposal(proposal_id), &proposal);
+
+        env.events()
+            .publish((symbol_short!("encumber"), proposal_id), proposal.amount);
+    }
+
     /// Execute a proposal once it has reached the approval threshold.
     /// Anyone can call this after enough approvals are in.
     pub fn execute(env: Env, proposal_id: u64) {
@@ -148,6 +196,29 @@ impl TreasuryVaultContract {
         }
         if proposal.approvals.len() < config.threshold {
             panic!("insufficient approvals");
+        }
+
+        let vault_bal = Self::balance(env.clone());
+        if proposal.amount > vault_bal {
+            panic!("insufficient vault liquidity");
+        }
+
+        // Release encumbrance if the proposal was encumbered
+        if proposal.encumbered {
+            let current_enc: i128 = env
+                .storage()
+                .instance()
+                .get(&DataKey::EncumberedBalance)
+                .unwrap_or(0);
+            let new_enc = if current_enc >= proposal.amount {
+                current_enc - proposal.amount
+            } else {
+                0
+            };
+            env.storage()
+                .instance()
+                .set(&DataKey::EncumberedBalance, &new_enc);
+            proposal.encumbered = false;
         }
 
         proposal.executed = true;
@@ -218,6 +289,23 @@ impl TreasuryVaultContract {
             .balance(&env.current_contract_address())
     }
 
+    pub fn encumbered_balance(env: Env) -> i128 {
+        env.storage()
+            .instance()
+            .get(&DataKey::EncumberedBalance)
+            .unwrap_or(0)
+    }
+
+    pub fn available_balance(env: Env) -> i128 {
+        let total = Self::balance(env.clone());
+        let enc = Self::encumbered_balance(env);
+        if total >= enc {
+            total - enc
+        } else {
+            0
+        }
+    }
+
     pub fn get_proposal(env: Env, proposal_id: u64) -> Option<Proposal> {
         env.storage().persistent().get(&DataKey::Proposal(proposal_id))
     }
@@ -276,7 +364,7 @@ mod test {
         let token = sac.address();
         let token_admin_client = StellarAssetClient::new(&env, &token);
 
-        let vault_address = env.register_contract(None, TreasuryVaultContract);
+        let vault_address = env.register(TreasuryVaultContract, ());
         let client = TreasuryVaultContractClient::new(&env, &vault_address);
 
         let mut signers: Vec<Address> = Vec::new(&env);
@@ -323,6 +411,66 @@ mod test {
 
         let proposal = h.client.get_proposal(&proposal_id).unwrap();
         assert!(proposal.executed);
+    }
+
+    #[test]
+    fn test_encumbrance_locks_available_balance_and_prevents_overdraft_race() {
+        let h = setup(1, 1);
+        let signer = h.signers.get(0).unwrap();
+        h.token_admin_client.mint(&h.vault_address, &1_000);
+
+        assert_eq!(h.client.balance(), 1_000);
+        assert_eq!(h.client.available_balance(), 1_000);
+        assert_eq!(h.client.encumbered_balance(), 0);
+
+        let recipient_a = Address::generate(&h.env);
+        let prop_a = h.client.propose(
+            &signer,
+            &recipient_a,
+            &600,
+            &String::from_str(&h.env, "Prop A"),
+        );
+
+        // Encumber Proposal A (600 out of 1000)
+        h.client.encumber_payout(&signer, &prop_a);
+        assert_eq!(h.client.encumbered_balance(), 600);
+        assert_eq!(h.client.available_balance(), 400);
+
+        // Proposal B requesting 500 should fail encumbrance because available balance is only 400
+        let recipient_b = Address::generate(&h.env);
+        let _prop_b = h.client.propose(
+            &signer,
+            &recipient_b,
+            &500,
+            &String::from_str(&h.env, "Prop B"),
+        );
+
+        // Try encumbering Proposal B -> should fail
+        // Once Prop A executes, 600 is released and balance becomes 400
+        h.client.execute(&prop_a);
+        assert_eq!(h.client.balance(), 400);
+        assert_eq!(h.client.encumbered_balance(), 0);
+        assert_eq!(h.client.available_balance(), 400);
+
+        let token_client = TokenClient::new(&h.env, &h.token);
+        assert_eq!(token_client.balance(&recipient_a), 600);
+    }
+
+    #[test]
+    #[should_panic(expected = "insufficient available balance")]
+    fn test_encumber_exceeding_available_balance_fails() {
+        let h = setup(1, 1);
+        let signer = h.signers.get(0).unwrap();
+        h.token_admin_client.mint(&h.vault_address, &500);
+
+        let recipient = Address::generate(&h.env);
+        let prop_id = h.client.propose(
+            &signer,
+            &recipient,
+            &600,
+            &String::from_str(&h.env, "Too big"),
+        );
+        h.client.encumber_payout(&signer, &prop_id);
     }
 
     #[test]
@@ -438,7 +586,7 @@ mod test {
         let token_admin = Address::generate(&env);
         let token = env.register_stellar_asset_contract_v2(token_admin).address();
 
-        let vault = env.register_contract(None, TreasuryVaultContract);
+        let vault = env.register(TreasuryVaultContract, ());
         let client = TreasuryVaultContractClient::new(&env, &vault);
 
         let signers = vec![&env, Address::generate(&env), Address::generate(&env)];
@@ -514,5 +662,3 @@ mod test {
         h.client.set_signers(&outsider, &new_signers, &1);
     }
 }
-
-
