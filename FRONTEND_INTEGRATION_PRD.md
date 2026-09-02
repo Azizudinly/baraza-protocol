@@ -21,7 +21,8 @@ flowchart LR
     C --> D["4. Community Dashboard\n(Treasury & Proposals)"]
     D --> E["5. Binary Governance Voting\n(Yes/No + Quorum Indicator)"]
     D --> F["6. Treasury Multisig Portal\n(Officer Approval Threshold)"]
-    D --> G["7. Member Profile & Settings\n(Locale, Preferences, Streaks)"]
+    F --> G["7. Stablecoin Off-Ramp\n(Minisend Payout & Tranches)"]
+    D --> H["8. Member Profile & Settings\n(Locale, Preferences, Streaks)"]
 ```
 
 ---
@@ -79,7 +80,32 @@ flowchart LR
   - Show approval threshold status (e.g., *"2 of 3 Officers Approved"*).
   - Provide *"Approve Payout"* button that initiates on-chain signature verification.
 
-### 3.6 Member Profile, Push Notifications & Identity Settings (`Profile.tsx`)
+### 3.6 Minisend Multi-Chain Stablecoin Off-Ramp & Disbursement Portal (`Disbursements.tsx`)
+- **User Flow:** Elected officer or automated passed proposal triggers liquidation of on-chain USDC/USDT into fiat mobile money (M-Pesa, MTN MoMo, Airtel, or Bank Transfer) delivered directly to the recipient's handset.
+- **Frontend Architecture & Client Adapter:**
+  - Invoke typed domain adapter `usdcToMobileMoney()` or `usdcToMpesa()` (`app/src/lib/adapters/minisend.ts`).
+  - Calls `POST /api/payments/minisend` with Ed25519 wallet proof authentication.
+- **Pre-Flight Validation & UX Controls:**
+  - **Multi-Market Phone Normalizer:** Enforces E.164 phone formatting (`toE164(phone)`) across Kenya (`+254`), Uganda (`+256`), Ghana (`+233`), and Nigeria (`+234`). Displays immediate inline validation error if format is invalid.
+  - **Safaricom KES 250,000 Ceiling & Tranche Split Wizard:**
+    - Single telco disbursements are hard-capped at KES 250,000 (25,000,000 minor units).
+    - If expected fiat exceeds KES 250,000, the UI blocks single dispatch and launches the **Automated Tranche Wizard**, showing:
+      *"Amount exceeds Safaricom per-transaction ceiling (KES 250,000). System will split this payout into N tranches of KES X."*
+    - Each tranche executes with deterministic idempotency keys (`proposal_id-tranche-1`, `proposal_id-tranche-2`).
+  - **FX Slippage & Rate Transparency:**
+    - Displays live quoted exchange rate (e.g., `1 USDC = 130.50 KES`).
+    - Enforces 150 bps (1.50%) adverse spot slippage tolerance indicator with tooltip explanation.
+- **Real-Time Payout Lifecycle Tracker:**
+  - Visual status stepper mapping directly to backend monotonic state machine:
+    1. `OFFRAMP_INITIATED`: Escrow funds reserved in treasury vault (`Debit: Treasury`, `Credit: Escrow`).
+    2. `PROVIDER_PENDING_VERIFICATION`: Dispatched to Minisend / carrier network. Shows pulsing indicator (*"Processing with Safaricom M-Pesa..."*).
+    3. `SETTLED`: Confirmed by HMAC-signed webhook. Displays Safaricom Receipt ID (`telco_receipt_id`), exact fiat amount received, and green completion checkmark.
+    4. `FAILED`: Telco rejected payout (e.g., inactive SIM). Displays alert: *"Payout failed at carrier network. Treasury funds have been automatically returned to the Community Vault via compensatory reversal."*
+    5. `REVERSAL_DETECTED`: Carrier chargeback under audit investigation.
+- **Resilience & Failover UX:**
+  - In the event of upstream Minisend latency or outage (circuit breaker `OPEN`), the UI displays an informational badge: *"Disbursement routed via Kotani Pay B2C (Secondary Liquidation Rail)"* with zero transaction abandonment.
+
+### 3.7 Member Profile, Push Notifications & Identity Settings (`Profile.tsx`)
 - **Frontend Requirements:**
   - View member contribution streak badge, verified tier badges, and linked wallets/phones.
   - Edit display name, bio, avatar upload, default currency, and country locale.
@@ -92,7 +118,7 @@ flowchart LR
   - `GET/PATCH /api/user/notifications/preferences`.
   - `POST /api/user/avatar-upload`.
 
-### 3.7 Community Workspace: Roadmaps, Suggestion Box & Bounty Board
+### 3.8 Community Workspace: Roadmaps, Suggestion Box & Bounty Board
 - **Frontend Requirements:**
   - **Community Roadmap (`CommunityRoadmap.tsx`):** View funded and upcoming group milestones with progress bars. Officers can add or update milestones.
   - **Member Suggestion Box (`CommunitySuggestions.tsx`):** Bottom-up ideation feed where members submit ideas and upvote/downvote proposals before formal on-chain governance.
@@ -102,7 +128,7 @@ flowchart LR
   - `GET/POST /api/communities/[id]/suggestions` & `POST /api/communities/[id]/suggestions/[suggestionId]/vote`.
   - `GET/POST /api/communities/[id]/bounties`, `POST /api/bounties/[id]/apply`, `POST /api/bounties/[id]/submit`.
 
-### 3.8 Officer Administration: Member Directory, Invites, Statements & Disputes
+### 3.9 Officer Administration: Member Directory, Invites, Statements & Disputes
 - **Frontend Requirements:**
   - **Invite Link Generator:** Create trackable invitation links with custom expiration and usage limits for viral onboarding.
   - **Member Roster Management:** Search and filter members by status (`active`, `overdue_dues`, `officer`), assign leadership titles, and export CSV.
