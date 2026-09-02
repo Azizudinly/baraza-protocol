@@ -122,7 +122,7 @@ export default async function handler(req: Request): Promise<Response> {
   // 2. Behavioral Deposit Monitoring (Invariant I-REG-4: > KES 100M)
   // -------------------------------------------------------------------------
   const commVolumes = new Map<string, bigint>();
-  const ordersQuery = `${supabaseUrl}/rest/v1/payment_orders?status=eq.SETTLED&select=community_id,amount_received`;
+  const ordersQuery = `${supabaseUrl}/rest/v1/payment_orders?status=in.(RECONCILED,MINT_CONFIRMED,INDEXER_CONFIRMED,PAYMENT_CONFIRMED,SETTLED)&select=community_id,amount_received`;
   const ordersRes = await fetch(ordersQuery, {
     headers: {
       apikey: serviceKey,
