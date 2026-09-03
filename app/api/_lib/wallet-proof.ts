@@ -1,4 +1,5 @@
 import { verify } from 'node:crypto';
+import { StrKey } from '@stellar/stellar-base';
 
 const SOLANA_PUBLIC_KEY_LENGTH = 32;
 const SOLANA_SIGNATURE_LENGTH = 64;
@@ -45,7 +46,17 @@ export function verifyWalletProof(
   if (parsed.wallet !== expectedWallet || parsed.purpose !== expectedPurpose) return false;
   if (Math.abs(Date.now() - parsed.issuedAt) > MAX_PROOF_AGE_MS) return false;
 
-  const publicKey = decodeBase58(expectedWallet);
+  let publicKey: Buffer;
+  try {
+    if (expectedWallet.startsWith('G') && expectedWallet.length === 56) {
+      publicKey = Buffer.from(StrKey.decodeEd25519PublicKey(expectedWallet));
+    } else {
+      publicKey = decodeBase58(expectedWallet);
+    }
+  } catch {
+    return false;
+  }
+
   const signature = Buffer.from(proof.signature, 'base64');
   if (publicKey.length !== SOLANA_PUBLIC_KEY_LENGTH) return false;
   if (signature.length !== SOLANA_SIGNATURE_LENGTH) return false;
