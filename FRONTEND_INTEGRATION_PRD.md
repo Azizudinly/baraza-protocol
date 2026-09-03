@@ -162,6 +162,35 @@ flowchart LR
   - `PATCH /api/compliance/sacco-license-review`
   - `GET /api/compliance/status?communityId=[id]`
 
+### 3.11 Treasury Solvency & Fail-Closed Circuit Breaker UI (`TreasuryCircuitBreaker.tsx` / `CommunityDashboard.tsx`)
+- **User & Officer Experience:**
+  - **Fail-Closed Circuit Breaker Banner:** When a community has `is_payout_frozen: true` or `status: 'paused'`, the UI surfaces a prominent persistent amber/red status banner:
+    *"Treasury Circuit Breaker Active: Outbound disbursements are temporarily paused pending scheduled reconciliation review. Member dues and deposits remain fully safe."*
+  - **Disabled Disbursement Controls:**
+    - **Minisend Off-Ramp Modal:** "Send Payout" CTA is disabled with tooltip: *"Disbursements temporarily locked by automated reconciliation circuit breaker."*
+    - **Governance Execution:** "Execute Proposal" CTA is disabled with tooltip: *"Proposal payouts locked due to treasury circuit breaker."*
+  - **Officer Reconciliation & Audit Portal:**
+    - Displays variance indicator, timestamp of detection, and link to compliance review.
+    - Administrative recovery trigger calling `POST /api/compliance/treasury-unfreeze` upon officer authorization.
+- **Backend Contracts:**
+  - `POST /api/cron/reconcile-treasury` (Scheduled reconciler)
+  - `POST /api/compliance/treasury-unfreeze` (Administrative unfreeze)
+  - `POST /api/payments/minisend` & `POST /api/governance/execute` (Return `HTTP 403 Forbidden` with `circuitBreaker: true` when frozen)
+
+### 3.12 Public Synthetic System Health & OpenMetrics Diagnostics (`StatusDashboard.tsx`)
+- **Public & Internal Diagnostics:**
+  - Consumes edge-cached `GET /api/health/ready` (5-second in-memory TTL cache to prevent DB query starvation).
+  - Multi-tier visual component badges:
+    - **PostgreSQL Database:** Hard tier — Green ("Operational") / Red ("Outage").
+    - **Stellar Horizon RPC:** Soft tier — Green ("Operational") / Yellow ("Degraded RPC Performance").
+    - **Kotani Pay / Minisend:** Soft tier — Green ("Operational") / Yellow ("Degraded").
+  - Cloudflare Edge Resilience: When soft dependencies experience network degradation, the health bar displays *"Degraded Performance"* without taking down the web app.
+  - SRE Metrics Exporter: Exposes standard OpenMetrics text format at `GET /api/health/metrics` for Prometheus / Grafana scraping.
+- **Backend Contracts:**
+  - `GET /api/health/live` (Sub-millisecond liveness probe)
+  - `GET /api/health/ready` (Deep multi-rail readiness probe with 5s TTL)
+  - `GET /api/health/metrics` (OpenMetrics Prometheus exporter with 30s TTL)
+
 ---
 
 ## 4. Design Aesthetics & Error Handling Guidelines

@@ -60,6 +60,15 @@ const PROMOTIONS: Array<{ from: string; to: string }> = [
  */
 const MINT_SUBMITTED_STALE_MS = 30 * 60 * 1000;
 
+/**
+ * SAD §3.8 / Invariant I2: Base-4 Exponential Backoff Schedule
+ * 30s -> 2m (120s) -> 8m (480s) -> 32m (1920s) -> 1h (3600s), capped at 8 attempts.
+ */
+export function calculateBackoffDelaySeconds(retryCount: number): number {
+  const clamped = Math.max(0, Math.floor(retryCount));
+  return Math.min(30 * Math.pow(4, clamped), 3600);
+}
+
 interface MintQueuedOrder {
   order_id: string;
   wallet_address: string;
@@ -494,12 +503,20 @@ async function mintQueuedOrders(): Promise<MintTickResult> {
     if (result.ok) {
       await markMintSubmitted(order.order_id, result.txHash);
       minted += 1;
-    } else if (result.retriable) {
-      retriable_failed += 1;
-      console.warn('[promote-orders] mint retriable failure', order.order_id, result.error);
     } else {
-      await markMintFailed(order.order_id, result.error, 'submission');
-      terminal_failed += 1;
+      const isTerminalOp =
+        !result.retriable ||
+        result.error.includes('op_no_trust') ||
+        result.error.includes('op_not_authorized') ||
+        result.error.includes('op_underfunded');
+
+      if (isTerminalOp) {
+        await markMintFailed(order.order_id, result.error, 'submission');
+        terminal_failed += 1;
+      } else {
+        retriable_failed += 1;
+        console.warn('[promote-orders] mint retriable failure', order.order_id, result.error);
+      }
     }
   }
 
@@ -600,6 +617,65 @@ async function patchOrders(from: string, to: string): Promise<number> {
   return Array.isArray(data) ? data.length : 0;
 }
 
+/**
+ * SAD §3.5 / Invariant I-REC-3: 24-Hour Bounded Capital Finality
+ * Stalled orders older than 24h transition to REFUND_REQUESTED (manual support ticket).
+ */
+async function sweepStalledOrders(maxAgeHours = 24): Promise<number> {
+  const url = process.env.SUPABASE_URL?.replace(/\/$/, '');
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) return 0;
+
+  const cutoff = new Date(Date.now() - maxAgeHours * 60 * 60 * 1000).toISOString();
+  try {
+    const params = new URLSearchParams({
+      status: 'in.(MINT_QUEUED,MINT_SUBMITTED)',
+      created_at: `lte.${cutoff}`,
+      select: 'order_id,community_id,amount_expected',
+      limit: '50',
+    }).toString();
+
+    const res = await fetch(`${url}/rest/v1/payment_orders?${params}`, {
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+    });
+    if (!res.ok) return 0;
+
+    const stalled = (await res.json()) as Array<{
+      order_id: string;
+      community_id?: string;
+      amount_expected?: number;
+    }>;
+
+    for (const order of stalled) {
+      await fetch(`${url}/rest/v1/payment_orders?order_id=eq.${encodeURIComponent(order.order_id)}`, {
+        method: 'PATCH',
+        headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          status: 'REFUND_REQUESTED',
+          failure_reason: 'STALLED_ORDER_24H_TIMEOUT',
+        }),
+      });
+
+      if (order.community_id) {
+        await fetch(`${url}/rest/v1/compliance_alerts`, {
+          method: 'POST',
+          headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'content-type': 'application/json' },
+          body: JSON.stringify({
+            community_id: order.community_id,
+            alert_type: 'STALLED_PAYMENT_ORDER_24H',
+            threshold_minor: order.amount_expected || 0,
+            details: { order_id: order.order_id, stalled_hours: maxAgeHours },
+          }),
+        });
+      }
+    }
+    return stalled.length;
+  } catch (err) {
+    console.warn('[promote-orders] sweepStalledOrders error:', err);
+    return 0;
+  }
+}
+
 // Web Standards Request/Response signature
 async function handler(req: Request): Promise<Response> {
   if (!isAuthorized(req)) {
@@ -633,10 +709,11 @@ async function handler(req: Request): Promise<Response> {
 
   const totalPromoted = Object.values(results).reduce((sum, r) => sum + r.promoted, 0);
 
-  // Seku monitoring: scan for RECONCILED USSD members who haven't dialled
-  // back in 30 days and flag them for operator follow-up. Safe to run every
-  // tick — the query filters out already-flagged orders.
+  // Seku monitoring: scan for RECONCILED USSD members who haven't dialled back in 30 days
   const invisible = await sweepInvisibleUssdMembers(30);
+
+  // SAD §3.5 / Invariant I-REC-3: 24h Stalled Order Escalation
+  const stalledEscalated = await sweepStalledOrders(24);
 
   return json({
     ok: true,
@@ -645,6 +722,7 @@ async function handler(req: Request): Promise<Response> {
     confirm: confirmResult,
     breakdown: results,
     invisibleSweep: invisible,
+    stalledEscalated,
     tickAt: new Date().toISOString(),
   }, { status: 200 });
 }
