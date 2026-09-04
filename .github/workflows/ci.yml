@@ -71,6 +71,18 @@ jobs:
           cache: npm
           cache-dependency-path: app/package-lock.json
 
+      - name: Start PostgreSQL & PostgREST Stack
+        run: |
+          docker compose -f ../docker/docker-compose.yml up -d baraza-postgres baraza-postgrest baraza-gateway
+          echo "Waiting for PostgREST on port 54321..."
+          for i in {1..30}; do
+            if curl -s http://localhost:54321/rest/v1/communities?select=count > /dev/null; then
+              echo "PostgREST is healthy on port 54321!"
+              break
+            fi
+            sleep 1
+          done
+
       - name: Install dependencies
         run: npm ci
 
