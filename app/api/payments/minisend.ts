@@ -3,6 +3,7 @@ export const config = { runtime: 'edge' };
 import { toE164 } from '../../src/lib/phone';
 import { calculateExpectedFiat, isWithinTelcoLimit, TELCO_MAX_SINGLE_TX_MINOR } from '../../src/lib/payments/slippage';
 import { defaultCircuitBreaker } from '../../src/lib/payments/circuitBreaker';
+import { assertTreasurySolvent } from '../../src/lib/compliance/treasurySolvencyGate';
 
 interface MinisendRequest {
   communityId?: string;
@@ -94,6 +95,19 @@ export default async function handler(req: Request): Promise<Response> {
 
   const supabaseUrl = process.env.SUPABASE_URL?.replace(/\/$/, '');
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  // 3.5 Pre-Flight Treasury Solvency & Circuit Breaker Gate (Invariant I-REC-1)
+  if (body.communityId && supabaseUrl && serviceKey) {
+    const solvency = await assertTreasurySolvent(supabaseUrl, serviceKey, body.communityId);
+    if (!solvency.allowed) {
+      return bad(
+        solvency.error || 'Payout blocked: Community treasury is frozen due to active reconciliation variance.',
+        403,
+        { communityId: body.communityId, circuitBreaker: true },
+      );
+    }
+  }
+
   const orderId = `ord_ms_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
   // 4. Record Initial Order & Phase 1 Escrow Journal Entry (Invariant I4)

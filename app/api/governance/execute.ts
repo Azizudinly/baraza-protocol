@@ -9,6 +9,7 @@
 
 import { getWalletProof, verifyWalletProof } from '../_lib/wallet-proof.js';
 import { evaluateSaccoGate } from '../../src/lib/compliance/saccoGate.js';
+import { assertTreasurySolvent } from '../../src/lib/compliance/treasurySolvencyGate.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -144,6 +145,20 @@ export default async function handler(req: Request): Promise<Response> {
             );
           }
         }
+      }
+    }
+
+    // 1.8 Treasury Solvency & Circuit Breaker Gate (Invariant I-REC-1 & I-REC-6)
+    if (proposal.community_id) {
+      const solvency = await assertTreasurySolvent(supabaseUrl, serviceKey, proposal.community_id);
+      if (!solvency.allowed) {
+        return json(
+          {
+            error: 'treasury_circuit_breaker_active',
+            message: solvency.error || 'Proposal execution blocked: Community treasury is frozen.',
+          },
+          { status: 403 },
+        );
       }
     }
 
