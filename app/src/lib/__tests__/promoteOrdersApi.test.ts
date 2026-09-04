@@ -34,17 +34,14 @@ describe('payment order demo promoter API', () => {
 
   it('promotes production orders when VERCEL_ENV=production', async () => {
     process.env.VERCEL_ENV = 'production';
-    const fetchMock = vi.fn().mockResolvedValue(Response.json([]));
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(Response.json([])));
     vi.stubGlobal('fetch', fetchMock);
 
     const response = await handler(request());
 
     expect(response.status).toBe(200);
-    // 4 PROMOTIONS entries + 1 invisible-member sweep (Seku monitoring).
-    // The MINT_QUEUED → MINT_SUBMITTED step is no longer a status walk —
-    // it's handled by the real Stellar mint, which short-circuits without
-    // BRZA_DISTRIBUTOR_SECRET set in this test.
-    expect(fetchMock).toHaveBeenCalledTimes(5);
+    // 3 PROMOTIONS entries + 1 mint queue query + 1 invisible-member sweep + 1 stalled-order sweep (6 total)
+    expect(fetchMock).toHaveBeenCalledTimes(6);
     for (const [url] of fetchMock.mock.calls) {
       expect(url).toContain('provider_environment=eq.production');
       expect(url).not.toContain('provider_environment=eq.sandbox');
@@ -52,17 +49,14 @@ describe('payment order demo promoter API', () => {
   });
 
   it('promotes only sandbox orders in non-production environments', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(Response.json([]));
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(Response.json([])));
     vi.stubGlobal('fetch', fetchMock);
 
     const response = await handler(request());
 
     expect(response.status).toBe(200);
-    // 4 PROMOTIONS entries + 1 invisible-member sweep (Seku monitoring).
-    // The MINT_QUEUED → MINT_SUBMITTED step is no longer a status walk —
-    // it's handled by the real Stellar mint, which short-circuits without
-    // BRZA_DISTRIBUTOR_SECRET set in this test.
-    expect(fetchMock).toHaveBeenCalledTimes(5);
+    // 3 PROMOTIONS entries + 1 mint queue query + 1 invisible-member sweep + 1 stalled-order sweep (6 total)
+    expect(fetchMock).toHaveBeenCalledTimes(6);
     for (const [url] of fetchMock.mock.calls) {
       expect(url).toContain('provider_environment=eq.sandbox');
       expect(url).not.toContain('provider_environment=eq.production');

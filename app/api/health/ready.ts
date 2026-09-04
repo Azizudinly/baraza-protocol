@@ -25,7 +25,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   // 1. Check Database (Hard Dependency - Invariant I-REC-4)
   const dbStart = Date.now();
-  let dbHealth: ComponentHealth = { tier: 'hard', status: 'unhealthy', latency_ms: 0 };
+  const dbHealth: ComponentHealth = { tier: 'hard', status: 'unhealthy', latency_ms: 0 };
   if (supabaseUrl && serviceKey) {
     try {
       const res = await fetch(`${supabaseUrl}/rest/v1/communities?select=id&limit=1`, {
@@ -47,7 +47,7 @@ export default async function handler(req: Request): Promise<Response> {
 
   // 2. Check Stellar Horizon (Soft Dependency - Invariant I-REC-4)
   const horizonStart = Date.now();
-  let horizonHealth: ComponentHealth = { tier: 'soft', status: 'unhealthy', latency_ms: 0 };
+  const horizonHealth: ComponentHealth = { tier: 'soft', status: 'unhealthy', latency_ms: 0 };
   try {
     const res = await fetch(`${horizonUrl}/`, { signal: AbortSignal.timeout(3000) });
     horizonHealth.latency_ms = Date.now() - horizonStart;

@@ -628,8 +628,14 @@ async function sweepStalledOrders(maxAgeHours = 24): Promise<number> {
 
   const cutoff = new Date(Date.now() - maxAgeHours * 60 * 60 * 1000).toISOString();
   try {
+    const envFilter =
+      process.env.NODE_ENV === 'production' || process.env.CF_PAGES === '1' || process.env.VERCEL_ENV === 'production'
+        ? 'eq.production'
+        : 'eq.sandbox';
+
     const params = new URLSearchParams({
       status: 'in.(MINT_QUEUED,MINT_SUBMITTED)',
+      provider_environment: envFilter,
       created_at: `lte.${cutoff}`,
       select: 'order_id,community_id,amount_expected',
       limit: '50',
