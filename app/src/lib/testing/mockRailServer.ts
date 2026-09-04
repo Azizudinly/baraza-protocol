@@ -374,6 +374,22 @@ export async function startMockRailServer(preferredPort = 0): Promise<MockRailSe
   const port = addr.port;
   const url = `http://127.0.0.1:${port}`;
 
+  // Auxiliary Mock: Evolution WhatsApp API (Port 8080) for Scenario 100
+  let evolutionServer: http.Server | null = null;
+  try {
+    const evo = http.createServer((_req, res) => {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ status: 200, message: 'Welcome to the Evolution API' }));
+    });
+    await new Promise<void>((resolve) => {
+      evo.listen(8080, '127.0.0.1', () => resolve());
+      evo.on('error', () => resolve());
+    });
+    evolutionServer = evo;
+  } catch {
+    // Port 8080 already bound by external service
+  }
+
   const setChaos = (config: Partial<ChaosConfig>): void => {
     currentChaos = { ...currentChaos, ...config, enabled: config.enabled ?? true };
   };
@@ -432,6 +448,11 @@ export async function startMockRailServer(preferredPort = 0): Promise<MockRailSe
     url,
     port,
     stop: async () => {
+      if (evolutionServer) {
+        await new Promise<void>((resolve) => {
+          evolutionServer?.close(() => resolve());
+        });
+      }
       await new Promise<void>((resolve, reject) => {
         server.close((err) => (err ? reject(err) : resolve()));
       });
