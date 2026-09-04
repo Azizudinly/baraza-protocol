@@ -1,0 +1,88 @@
+services:
+  # 1. Primary PostgreSQL Database with all migrations 000-030 applied
+  baraza-postgres:
+    image: postgres:16-alpine
+    container_name: baraza-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - baraza_pgdata:/var/lib/postgresql/data
+      - ../supabase/migrations:/docker-entrypoint-initdb.d/migrations:ro,z
+      - ./init-db/00_roles.sql:/docker-entrypoint-initdb.d/00_roles.sql:ro,z
+      - ./init-db/01_apply_migrations.sh:/docker-entrypoint-initdb.d/01_apply_migrations.sh:ro,z
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+
+  # 2. PostgREST REST API Layer exposing /communities, /payment_orders, etc.
+  baraza-postgrest:
+    image: postgrest/postgrest:latest
+    container_name: baraza-postgrest
+    restart: unless-stopped
+    environment:
+      PGRST_DB_URI: postgres://postgres:postgrespassword@baraza-postgres:5432/postgres
+      PGRST_DB_SCHEMA: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters-long
+    depends_on:
+      baraza-postgres:
+        condition: service_healthy
+
+  # 3. Supabase REST API Emulation Gateway (Port 54321 -> /rest/v1/)
+  baraza-gateway:
+    image: nginx:alpine
+    container_name: baraza-gateway
+    restart: unless-stopped
+    ports:
+      - "54321:54321"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro,z
+    depends_on:
+      - baraza-postgrest
+
+  # 4. Redis Cache for Evolution WhatsApp API
+  evolution-redis:
+    image: redis:7-alpine
+    container_name: baraza-evolution-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  # 5. Evolution WhatsApp API (Demo & conversational test stack)
+  evolution-api:
+    image: evoapicloud/evolution-api:latest
+    container_name: baraza-evolution-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_URL=http://localhost:8080
+      - AUTHENTICATION_API_KEY=evolution_master_secret_123
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://postgres:postgrespassword@baraza-postgres:5432/evolution?schema=public
+      - WEBHOOK_GLOBAL_URL=http://localhost:3000/api/webhooks/whatsapp
+      - WEBHOOK_GLOBAL_ENABLED=true
+      - WEBHOOK_GLOBAL_AUTHORIZATION=evolution_webhook_secret_123
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://evolution-redis:6379/1
+    depends_on:
+      baraza-postgres:
+        condition: service_healthy
+      evolution-redis:
+        condition: service_healthy
+
+volumes:
+  baraza_pgdata:

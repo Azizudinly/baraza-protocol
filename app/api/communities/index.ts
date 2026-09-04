@@ -82,11 +82,9 @@ async function handler(req: Request): Promise<Response> {
   const votingPeriodDays = body.votingPeriodDays ?? 7;
   const treasuryPolicy = body.treasuryPolicy ?? 'multisig-ready';
 
-  function initials(n: string): string {
-    return n.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('') || 'BR';
-  }
 
   const row = {
+    id: crypto.randomUUID(),
     name: name.trim(),
     type: type.trim(),
     description: description.trim(),
@@ -97,15 +95,11 @@ async function handler(req: Request): Promise<Response> {
     currency: (body.currency || 'KES').toUpperCase(),
     member_count: 0,
     fund_balance: 0,
-    active_decisions: 0,
-    image: initials(name),
     chain,
     quorum_pct: quorumPct,
     approval_threshold_pct: approvalThresholdPct,
     voting_period_days: votingPeriodDays,
     treasury_policy: treasuryPolicy,
-    paybill_number: body.paybillNumber ?? null,
-    ussd_shortcode: body.ussdShortcode ?? null,
     created_by: body.createdBy ?? null,
   };
 
