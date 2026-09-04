@@ -13,7 +13,7 @@ interface NavItem {
 
 const leftItems: NavItem[] = [
   { path: '/', label: 'Home', icon: Home, colClass: 'col-start-1' },
-  { path: '/communities', label: 'Explore', icon: Compass, colClass: 'col-start-2' },
+  { path: '/communities', label: 'Groups', icon: Compass, colClass: 'col-start-2' },
 ];
 
 const rightItems: NavItem[] = [
@@ -48,7 +48,7 @@ function NavLink({ item, location }: { item: NavItem; location: ReturnType<typeo
 function WalletAction() {
   const account = useAccount();
   const navigate = useNavigate();
-  const label = account.authenticated ? 'Account' : 'Log in';
+  const label = account.authenticated ? 'Account' : 'Log In';
 
   return (
     <button
@@ -92,7 +92,7 @@ export default function MobileBottomNav() {
             )}
           >
             <PlusCircle className="h-7 w-7" />
-            <span className="sr-only">Launch a community</span>
+            <span className="sr-only">Launch a Community</span>
           </Link>
         </div>
 

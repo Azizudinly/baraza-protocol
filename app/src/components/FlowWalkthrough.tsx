@@ -1,191 +1,144 @@
-import { useState } from "react";
-import {
-  Banknote,
-  CheckCircle2,
-  CircleDollarSign,
-  ClipboardList,
-  Link2,
-  ShieldCheck,
-  Users,
-  Vote,
-  type LucideIcon,
-} from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { toTitleCase } from "@/lib/utils";
 
-type FlowKey = "member" | "organizer";
+const services = [
+  {
+    title: toTitleCase("Create the Group"),
+    detail:
+      "Name it, pick the type, set dues, quorum, and the vote window. Members see those rules before they join.",
+  },
+  {
+    title: toTitleCase("Join and Pay"),
+    detail:
+      "Share a link. Members join with a phone number, see dues, platform, and carrier fees, then pay — or join free when the group charges nothing.",
+  },
+  {
+    title: toTitleCase("Vote on Spending"),
+    detail:
+      "A request becomes a proposal. Active members vote. The group sees quorum before any payout is allowed.",
+  },
+  {
+    title: toTitleCase("Release by the Rule"),
+    detail:
+      "Approved money moves the way the group configured. The trail stays on the dashboard for every member.",
+  },
+];
 
-interface FlowStep {
-  title: string;
-  detail: string;
-  icon: LucideIcon;
-  stat: string;
+function stepLabel(index: number) {
+  return String(index + 1).padStart(2, "0");
 }
 
-const flows: Record<FlowKey, { label: string; title: string; steps: FlowStep[] }> = {
-  member: {
-    label: "Member",
-    title: "Join, pay, vote, and track the shared group funds.",
-    steps: [
-      {
-        title: "Open invite",
-        detail: "A member follows the join link and reviews the rules before joining.",
-        icon: Link2,
-        stat: "01",
-      },
-      {
-        title: "Pay dues",
-        detail: "Members can pay by M-Pesa or their account, then attach proof to the membership request.",
-        icon: CircleDollarSign,
-        stat: "Local",
-      },
-      {
-        title: "Vote",
-        detail: "Active members vote on proposals with visible quorum progress.",
-        icon: Vote,
-        stat: "73%",
-      },
-      {
-        title: "Verify",
-        detail: "Group funds activity stays visible after every contribution and decision.",
-        icon: CheckCircle2,
-        stat: "Live",
-      },
-    ],
-  },
-  organizer: {
-    label: "Organizer",
-    title: "Launch the group, set rules, admit members, and release funds.",
-    steps: [
-      {
-        title: "Launch group",
-        detail: "Set the group name, type, dues, quorum, approval, and vote window.",
-        icon: ClipboardList,
-        stat: "4m",
-      },
-      {
-        title: "Invite group",
-        detail: "Share one joining path for connected accounts and phone-first members.",
-        icon: Users,
-        stat: "Link",
-      },
-      {
-        title: "Confirm money",
-        detail: "Payment confirmations connect contributions to the shared record automatically.",
-        icon: Banknote,
-        stat: "Verified",
-      },
-      {
-        title: "Release by rule",
-        detail: "Approved proposals become controlled fund movement.",
-        icon: ShieldCheck,
-        stat: "Rule",
-      },
-    ],
-  },
-};
-
-function FlowPoint({ step, index }: { step: FlowStep; index: number }) {
-  const Icon = step.icon;
+function StepCopy({
+  index,
+  title,
+  detail,
+}: {
+  index: number;
+  title: string;
+  detail: string;
+}) {
   return (
-    <div
-      className={cn(
-        "flex min-w-[78%] snap-start flex-col gap-3 rounded-xl border border-border/50 bg-surface p-4 md:min-w-0 md:p-5",
-        // Editorial wave: cards 2 and 4 drop down a half-step on desktop so
-        // the 4-col flow row reads as a rhythm rather than identical tiles.
-        index % 2 === 1 && "md:translate-y-6",
-      )}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-primary/25 bg-primary/10 text-primary">
-          <Icon className="h-5 w-5" />
-        </div>
-        <span className="select-none font-mono text-3xl font-black leading-none text-primary/15 tabular-nums">
-          {String(index + 1).padStart(2, "0")}
-        </span>
-      </div>
-      <div>
-        <span className="inline-flex rounded-md border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-          {step.stat}
-        </span>
-        <h3 className="mt-2 font-display text-base font-bold">{step.title}</h3>
-        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{step.detail}</p>
-      </div>
-    </div>
+    <article className="text-center">
+      <p className="font-display text-3xl font-black leading-none text-primary">{stepLabel(index)}</p>
+      <h3 className="mt-3 font-display text-xl font-bold text-foreground">{title}</h3>
+      <p className="mt-2 text-sm leading-7 text-muted-foreground">{detail}</p>
+    </article>
+  );
+}
+
+function Stem() {
+  return <div className="h-14 w-px bg-primary" aria-hidden="true" />;
+}
+
+function Node() {
+  return (
+    <span
+      className="relative z-10 block h-3 w-3 rounded-full bg-primary ring-4 ring-background"
+      aria-hidden="true"
+    />
   );
 }
 
 export default function FlowWalkthrough() {
-  const [activeFlow, setActiveFlow] = useState<FlowKey>("member");
-  const flow = flows[activeFlow];
-
   return (
-    <section id="flow-walkthrough" className="relative scroll-mt-16 py-10 md:py-12">
-      <div className="container mx-auto max-w-7xl px-4">
-        <div className="mx-auto">
-          <motion.div
-            className="mb-6"
-            initial={{ y: 24, opacity: 0 }}
-            whileInView={{ y: 0, opacity: 1 }}
-            viewport={{ once: true, amount: 0.4 }}
-            transition={{ duration: 0.5 }}
-          >
-            <p className="text-xs font-semibold uppercase tracking-widest">Flow walkthrough</p>
-            <h2 className="mt-3 max-w-2xl font-display text-3xl font-bold leading-tight md:text-4xl">
-              Two paths, one shared source of truth
-            </h2>
-          </motion.div>
+    <section id="how-it-works" className="scroll-mt-20 border-t border-border py-20">
+      <div className="page-shell">
+        <p className="text-center text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+          How it works
+        </p>
+        <h2 className="mx-auto mt-3 max-w-3xl text-center font-display text-3xl font-black leading-tight text-foreground md:text-4xl">
+          {toTitleCase("Four Steps from Empty Group to Money That Cannot Move in Secret.")}
+        </h2>
 
-          <motion.div
-            className="overflow-hidden rounded-2xl border border-border/60 bg-card p-4 md:p-7"
-            initial={{ y: 24, opacity: 0 }}
-            whileInView={{ y: 0, opacity: 1 }}
-            viewport={{ once: true, amount: 0.2 }}
-            transition={{ duration: 0.55, delay: 0.1 }}
-          >
-            {/* Tab toggle */}
-            <div className="relative mx-auto mb-8 grid w-full max-w-xl grid-cols-2 rounded-2xl bg-muted p-1.5">
-              {(Object.keys(flows) as FlowKey[]).map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setActiveFlow(key)}
-                  className={cn(
-                    "rounded-xl px-5 py-3 text-base font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 md:text-xl",
-                    activeFlow === key
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                  aria-pressed={activeFlow === key}
-                >
-                  {flows[key].label}
-                </button>
+        {/* Desktop: horizontal spine, odd steps up, even steps down */}
+        <div className="mt-16 hidden lg:block">
+          <div className="grid grid-cols-4 items-end">
+            {services.map((service, index) => (
+              <div key={`${service.title}-top`} className="flex flex-col items-center px-4">
+                {index % 2 === 0 ? (
+                  <>
+                    <StepCopy index={index} title={service.title} detail={service.detail} />
+                    <div className="mt-6">
+                      <Stem />
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            ))}
+          </div>
+
+          <div className="relative flex h-3 items-center">
+            <div className="absolute left-[12.5%] right-[12.5%] top-1/2 h-px -translate-y-1/2 bg-primary" />
+            <div className="grid w-full grid-cols-4">
+              {services.map((service) => (
+                <div key={`${service.title}-node`} className="flex justify-center">
+                  <Node />
+                </div>
               ))}
             </div>
+          </div>
 
-            {/* Flow content */}
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={activeFlow}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.22, ease: "easeOut" }}
-              >
-                <p className="mx-auto mb-6 max-w-2xl text-center text-base leading-relaxed text-muted-foreground md:text-lg">
-                  {flow.title}
-                </p>
-
-                {/* Mobile: swipeable steps instead of a 4-card stack */}
-                <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-4 md:gap-4 md:overflow-visible md:px-0 md:pb-0">
-                  {flow.steps.map((step, index) => (
-                    <FlowPoint key={step.title} step={step} index={index} />
-                  ))}
-                </div>
-              </motion.div>
-            </AnimatePresence>
-          </motion.div>
+          <div className="grid grid-cols-4 items-start">
+            {services.map((service, index) => (
+              <div key={`${service.title}-bottom`} className="flex flex-col items-center px-4">
+                {index % 2 === 1 ? (
+                  <>
+                    <div className="mb-6">
+                      <Stem />
+                    </div>
+                    <StepCopy index={index} title={service.title} detail={service.detail} />
+                  </>
+                ) : null}
+              </div>
+            ))}
+          </div>
         </div>
+
+        {/* Mobile / tablet: vertical spine, odd steps left, even steps right */}
+        <ol className="relative mt-14 lg:hidden">
+          <div className="absolute bottom-2 left-1/2 top-2 w-px -translate-x-1/2 bg-primary" aria-hidden="true" />
+          {services.map((service, index) => {
+            const above = index % 2 === 0;
+            return (
+              <li key={service.title} className="relative grid grid-cols-2 items-start py-6 first:pt-0">
+                <div className={`px-2 ${above ? "col-start-1 text-center" : "col-start-2 text-center"}`}>
+                  <p className="font-display text-3xl font-black leading-none text-primary">
+                    {stepLabel(index)}
+                  </p>
+                  <h3 className="mt-3 font-display text-lg font-bold text-foreground">{service.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{service.detail}</p>
+                </div>
+                <span
+                  className={`absolute top-8 h-px w-6 bg-primary ${above ? "right-1/2" : "left-1/2"}`}
+                  aria-hidden="true"
+                />
+                <span
+                  className="absolute left-1/2 top-7 z-10 h-3 w-3 -translate-x-1/2 rounded-full bg-primary ring-4 ring-background"
+                  aria-hidden="true"
+                />
+              </li>
+            );
+          })}
+        </ol>
       </div>
     </section>
   );

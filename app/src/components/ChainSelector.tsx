@@ -4,12 +4,20 @@ import { VISIBLE_CHAIN_LIST, type Chain } from '@/lib/chain';
 import { useChain } from '@/hooks/useChain';
 import { cn } from '@/lib/utils';
 
+const CHAIN_LOGOS: Partial<Record<Chain, { src: string; invertOnDark?: boolean }>> = {
+  solana: { src: '/logos/solana.svg' },
+  mpesa: { src: '/logos/mpesa.svg' },
+  stellar: { src: '/logos/stellar.svg', invertOnDark: true },
+  celo: { src: '/logos/celo.svg' },
+};
+
 interface ChainSelectorProps {
   variant?: 'desktop' | 'mobile';
+  side?: 'bottom' | 'left';
   className?: string;
 }
 
-export default function ChainSelector({ variant = 'desktop', className }: ChainSelectorProps) {
+export default function ChainSelector({ variant = 'desktop', side = 'bottom', className }: ChainSelectorProps) {
   const { chain, chainMeta, setChain } = useChain();
   const [open, setOpen] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
@@ -74,7 +82,7 @@ export default function ChainSelector({ variant = 'desktop', className }: ChainS
         aria-expanded={open}
         aria-label={`Funding rail: ${chainMeta.label} selected. Click to switch.`}
         className={cn(
-          'inline-flex items-center gap-2 rounded-xl border border-border/60 bg-surface text-xs font-semibold text-foreground transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70',
+          'inline-flex items-center gap-2 rounded-full border border-border/60 bg-surface text-xs font-semibold text-foreground transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70',
           isMobile ? 'w-full justify-between px-3.5 py-3 text-sm' : 'px-3 py-2',
         )}
       >
@@ -100,7 +108,11 @@ export default function ChainSelector({ variant = 'desktop', className }: ChainS
           aria-label="Select funding rail"
           className={cn(
             'absolute z-50 overflow-hidden rounded-xl border border-border/60 bg-card/95 shadow-[0_24px_60px_hsl(84_17%_2%/0.6)] backdrop-blur',
-            isMobile ? 'left-0 right-0 top-full mt-2' : 'right-0 top-full mt-2 w-72',
+            side === 'left'
+              ? 'right-full top-0 mr-2 w-72'
+              : isMobile
+                ? 'left-0 right-0 top-full mt-2'
+                : 'right-0 top-full mt-2 w-72',
           )}
         >
           {VISIBLE_CHAIN_LIST.map((meta, index) => {
@@ -153,9 +165,21 @@ export default function ChainSelector({ variant = 'desktop', className }: ChainS
                     <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
                       {meta.comingSoon}
                     </span>
-                  ) : active ? (
-                    <Check className="h-3.5 w-3.5 text-primary" aria-hidden />
-                  ) : null}
+                  ) : (
+                    <span className="flex shrink-0 items-center gap-2">
+                      {active ? <Check className="h-3.5 w-3.5 text-primary" aria-hidden /> : null}
+                      {CHAIN_LOGOS[meta.id] ? (
+                        <img
+                          src={CHAIN_LOGOS[meta.id]!.src}
+                          alt=""
+                          className={cn(
+                            'h-6 w-auto max-w-[2.75rem] object-contain',
+                            CHAIN_LOGOS[meta.id]!.invertOnDark && 'dark:invert',
+                          )}
+                        />
+                      ) : null}
+                    </span>
+                  )}
                 </button>
               </li>
             );

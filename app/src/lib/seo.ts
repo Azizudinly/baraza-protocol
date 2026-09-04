@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { getPublicEnv } from "@/lib/env";
+import { toTitleCase } from "@/lib/utils";
 
 type SeoOptions = {
   /** Pass `undefined` while data is loading to avoid a stale-title flash. */
@@ -46,7 +47,8 @@ export function useSeo({ title, description, path, image, noIndex }: SeoOptions)
     if (title === undefined) return;
 
     const origin = getOrigin();
-    const fullTitle = title.includes(SITE_NAME) ? title : `${title} — ${SITE_NAME}`;
+    const titled = toTitleCase(title);
+    const fullTitle = titled.includes(SITE_NAME) ? titled : `${titled} — ${SITE_NAME}`;
     const url = `${origin}${path ?? ""}`;
     const ogImage = image
       ? image.startsWith("http")

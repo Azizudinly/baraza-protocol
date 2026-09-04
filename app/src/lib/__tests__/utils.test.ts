@@ -7,6 +7,7 @@ import {
   formatRailAmountWithKes,
   formatRailDate,
   formatUSD,
+  toTitleCase,
   truncateAddress,
 } from '@/lib/utils';
 import { writeAccountCountry } from '@/lib/accountLocale';
@@ -76,6 +77,26 @@ describe('daysRemaining', () => {
     vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
     expect(daysRemaining('2026-01-08T00:00:00Z')).toBe(7);
     vi.useRealTimers();
+  });
+});
+
+describe('toTitleCase', () => {
+  it('capitalizes principal words and keeps small words lowercase', () => {
+    expect(toTitleCase('run the chama where every member can see the money.')).toBe(
+      'Run the Chama Where Every Member Can See the Money.',
+    );
+  });
+
+  it('capitalizes first and last words even when they are small', () => {
+    expect(toTitleCase('a trail to keep')).toBe('A Trail to Keep');
+  });
+
+  it('title-cases hyphenated words and keeps acronyms', () => {
+    expect(toTitleCase('phone-first M-Pesa for a SACCO')).toBe('Phone-First M-Pesa for a SACCO');
+  });
+
+  it('preserves product names with inner capitals', () => {
+    expect(toTitleCase('link your GitHub account')).toBe('Link Your GitHub Account');
   });
 });
 

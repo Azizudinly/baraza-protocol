@@ -1,40 +1,148 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { CircleUserRound, LogIn, Menu, Moon, MoreHorizontal, PlayCircle, Search, Sparkles, Sun, UserPlus, X } from "lucide-react";
+import {
+  CircleUserRound,
+  LogIn,
+  LogOut,
+  Menu,
+  Moon,
+  PlusCircle,
+  Sun,
+  UserPlus,
+  X,
+} from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
 import ChainSelector from "@/components/ChainSelector";
-import { useAkiliChat } from "@/akili/useAkiliChat";
+import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 import { useAccount } from "@/contexts/AccountContext";
 
 const navLinks = [
-  { path: "/", label: "Home" },
-  { path: "/communities", label: "Explore" },
-  { path: "/bounties", label: "Bounties" },
-  { path: "/evaluate", label: "Evaluate" },
-  { path: "/create/purpose", label: "Launch" },
-  { path: "/profile", label: "Profile" },
-];
+  { label: "Groups", to: "/communities" },
+  { label: "How It Works", to: "/#how-it-works", hash: "how-it-works" },
+  { label: "Features", to: "/#features", hash: "features" },
+  { label: "FAQ", to: "/#faq", hash: "faq" },
+] as const;
 
-const primaryNavLinks = navLinks.filter((link) => ["/", "/communities", "/create/purpose"].includes(link.path));
-const overflowNavLinks = navLinks.filter((link) => !primaryNavLinks.includes(link));
+function isAppRoute(pathname: string) {
+  return (
+    pathname.startsWith("/create") ||
+    pathname.startsWith("/join") ||
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/dao") ||
+    pathname.startsWith("/profile")
+  );
+}
 
-const quickSearches = ["DAO", "SACCO", "co-operative", "governance", "savings"];
+function isLinkActive(pathname: string, hash: string, link: (typeof navLinks)[number]) {
+  if ("hash" in link && link.hash) return pathname === "/" && hash === `#${link.hash}`;
+  return pathname === link.to || pathname.startsWith(`${link.to}/`);
+}
+
+function ProfileMenu({
+  displayName,
+  onLogout,
+  showFund,
+}: {
+  displayName: string;
+  onLogout: () => void;
+  showFund: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (event: MouseEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("mousedown", onPointer);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onPointer);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="btn-icon h-10 w-10"
+        aria-label="Open account menu"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        <CircleUserRound className="h-5 w-5" />
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-72 overflow-visible rounded-xl border border-border bg-card py-2 shadow-lg"
+        >
+          <p className="truncate px-3 pb-2 text-xs text-muted-foreground" title={displayName}>
+            {displayName}
+          </p>
+          <div className="border-t border-border pt-1">
+            <Link
+              role="menuitem"
+              to="/profile"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 px-3 py-2.5 text-sm font-semibold text-foreground hover:bg-surface"
+            >
+              <CircleUserRound className="h-4 w-4 text-primary" />
+              Account
+            </Link>
+            <Link
+              role="menuitem"
+              to="/create/purpose"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 px-3 py-2.5 text-sm font-semibold text-foreground hover:bg-surface"
+            >
+              <PlusCircle className="h-4 w-4 text-primary" />
+              Launch a Group
+            </Link>
+            {showFund && (
+              <div className="border-t border-border px-3 py-3">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Fund
+                </p>
+                <ChainSelector variant="mobile" side="left" />
+              </div>
+            )}
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                onLogout();
+              }}
+              className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-semibold text-foreground hover:bg-surface"
+            >
+              <LogOut className="h-4 w-4" />
+              Log Out
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [query, setQuery] = useState("");
   const location = useLocation();
   const navigate = useNavigate();
-  const { open: openAkili } = useAkiliChat();
   const { theme, toggleTheme } = useTheme();
   const account = useAccount();
+  const showChain = account.authenticated || isAppRoute(location.pathname);
 
-  const handleLogin = () => {
+  const handleSignIn = () => {
     if (account.configured) {
       account.login();
       return;
@@ -42,7 +150,7 @@ export default function Header() {
     navigate("/profile");
   };
 
-  const handleCreateAccount = () => {
+  const handleSignUp = () => {
     if (account.configured) {
       account.createAccount();
       return;
@@ -51,408 +159,141 @@ export default function Header() {
   };
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  // Close mobile menu on route change
-  useEffect(() => {
     setMobileOpen(false);
-    setMoreOpen(false);
-  }, [location.pathname]);
-
-  const submitSearch = (value = query) => {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      setSearchOpen(false);
-      return;
-    }
-    navigate(`/communities?q=${encodeURIComponent(trimmed)}`);
-    setSearchOpen(false);
-    setMobileOpen(false);
-  };
-
-  const openTutorial = () => {
-    navigate("/#flow-walkthrough");
-    setMobileOpen(false);
-    window.setTimeout(() => {
-      document.getElementById("flow-walkthrough")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 80);
-  };
-
-  const openAiGuide = () => {
-    openAkili("Help me use Baraza for my DAO");
-    setMobileOpen(false);
-  };
+  }, [location.pathname, location.hash]);
 
   return (
-    <header
-      className={cn(
-        "fixed top-0 left-0 right-0 z-50 border-b transition-all duration-300",
-        scrolled
-          ? "border-border/60 bg-background/88 shadow-[0_2px_20px_hsl(84_17%_2%/0.55)] backdrop-blur-xl"
-          : "border-border/35 bg-background/82 backdrop-blur-xl",
-      )}
-    >
-      <div className="flex h-14 w-full items-center justify-between gap-3 px-4 sm:px-6">
-        <div className="flex min-w-0 items-center gap-5">
-          <Link to="/" className="flex shrink-0 items-center" aria-label="Baraza home">
-            <BrandLogo size="sm" />
-          </Link>
+    <header className="fixed top-0 left-0 right-0 z-50 bg-background">
+      <div className="page-shell grid h-16 grid-cols-[1fr_auto] items-center gap-4 xl:grid-cols-[1fr_auto_1fr]">
+        <Link to="/" className="justify-self-start" aria-label="Baraza Protocol home">
+          <BrandLogo size="sm" showIcon={false} lockup="protocol" />
+        </Link>
 
-          <nav className="hidden items-center gap-4 md:flex" aria-label="Main navigation">
-            {primaryNavLinks.map((link) => {
-              const isActive =
-                location.pathname === link.path ||
-                (link.path !== "/" && location.pathname.startsWith(link.path));
-              return (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  aria-current={isActive ? "page" : undefined}
-                  className={cn(
-                    "relative py-1 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70",
-                    isActive
-                      ? "text-foreground"
-                      : "text-foreground/80 hover:text-foreground",
-                  )}
-                >
-                  {link.label}
-                  {isActive && (
-                    <span className="absolute inset-x-0 -bottom-1 h-0.5 rounded-full bg-primary" />
-                  )}
-                </Link>
-              );
-            })}
-            <div className="hidden items-center gap-4 2xl:flex">
-              {overflowNavLinks.map((link) => {
-                const isActive =
-                  location.pathname === link.path ||
-                  (link.path !== "/" && location.pathname.startsWith(link.path));
-                return (
-                  <Link
-                    key={link.path}
-                    to={link.path}
-                    aria-current={isActive ? "page" : undefined}
-                    className={cn(
-                      "relative py-1 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70",
-                      isActive
-                        ? "text-foreground"
-                        : "text-foreground/80 hover:text-foreground",
-                    )}
-                  >
-                    {link.label}
-                    {isActive && (
-                      <span className="absolute inset-x-0 -bottom-1 h-0.5 rounded-full bg-primary" />
-                    )}
-                  </Link>
-                );
-              })}
-              <button
-                type="button"
-                onClick={openTutorial}
-                className="inline-flex items-center gap-1.5 py-1 text-sm font-semibold text-foreground/80 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-              >
-                <PlayCircle className="h-4 w-4" />
-                Tutorial
-              </button>
-              <button
-                type="button"
-                onClick={openAiGuide}
-                className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-sm font-bold text-primary transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-              >
-                <Sparkles className="h-4 w-4" />
-                AI Guide
-              </button>
-            </div>
-          </nav>
-        </div>
-
-        <div className="relative flex shrink-0 items-center gap-2">
-          <ChainSelector variant="desktop" className="hidden md:block" />
-          <div className="hidden items-center gap-2 lg:flex">
-            {account.authenticated ? (
+        <nav className="hidden items-center gap-7 xl:flex" aria-label="Main navigation">
+          {navLinks.map((link) => {
+            const active = isLinkActive(location.pathname, location.hash, link);
+            return (
               <Link
-                to="/profile"
-                className="inline-flex h-10 max-w-44 items-center gap-2 rounded-md border border-primary/35 bg-primary/10 px-3 text-sm font-semibold text-foreground transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+                key={link.label}
+                to={link.to}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "relative py-1 text-sm font-semibold transition-colors",
+                  active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                )}
               >
-                <CircleUserRound className="h-4 w-4 shrink-0 text-primary" />
-                <span className="truncate">{account.displayName}</span>
+                {link.label}
+                {active && <span className="absolute inset-x-0 -bottom-1 h-0.5 rounded-full bg-primary" />}
               </Link>
-            ) : (
-              <>
-                <span className="hidden text-xs font-semibold text-muted-foreground xl:inline">Privy</span>
-                <button
-                  type="button"
-                  onClick={handleLogin}
-                  disabled={!account.ready}
-                  className="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-semibold text-foreground transition-colors hover:border-primary/55 hover:bg-surface disabled:cursor-wait disabled:opacity-60"
-                >
-                  <LogIn className="h-4 w-4" />
-                  Log in
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCreateAccount}
-                  disabled={!account.ready}
-                  className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60"
-                >
-                  <UserPlus className="h-4 w-4" />
-                  Get started
-                </button>
-              </>
-            )}
-          </div>
+            );
+          })}
+        </nav>
 
-          {!account.authenticated && (
-            <button
-              type="button"
-              onClick={handleCreateAccount}
-              disabled={!account.ready}
-              className="inline-flex h-10 items-center gap-1.5 rounded-md bg-primary px-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60 lg:hidden"
-            >
-              <UserPlus className="h-4 w-4" />
-              <span className="hidden sm:inline">Get started</span>
-              <span className="sm:hidden">Join</span>
-            </button>
-          )}
-
-          <div className="relative hidden md:block 2xl:hidden">
-            <button
-              type="button"
-              onClick={() => setMoreOpen((open) => !open)}
-              className="inline-flex h-10 items-center gap-1.5 rounded-md border border-border/70 bg-surface/70 px-3 text-sm font-semibold text-muted-foreground transition-colors hover:border-primary/45 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-              aria-expanded={moreOpen}
-              aria-controls="header-more-menu"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-              More
-            </button>
-
-            {moreOpen && (
-              <div
-                id="header-more-menu"
-                className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-56 rounded-xl border border-border/70 bg-card p-2 shadow-[var(--shadow-deep)]"
-              >
-                {overflowNavLinks.map((link) => {
-                  const isActive =
-                    location.pathname === link.path ||
-                    (link.path !== "/" && location.pathname.startsWith(link.path));
-                  return (
-                    <Link
-                      key={link.path}
-                      to={link.path}
-                      aria-current={isActive ? "page" : undefined}
-                      className={cn(
-                        "block rounded-lg px-3 py-2 text-sm font-semibold transition-colors",
-                        isActive
-                          ? "bg-primary/10 text-foreground"
-                          : "text-foreground/80 hover:bg-surface hover:text-foreground",
-                      )}
-                    >
-                      {link.label}
-                    </Link>
-                  );
-                })}
-                <div className="my-1 border-t border-border/50" />
-                <button
-                  type="button"
-                  onClick={openTutorial}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-foreground/80 transition-colors hover:bg-surface hover:text-foreground"
-                >
-                  <PlayCircle className="h-4 w-4" />
-                  Tutorial
-                </button>
-                <button
-                  type="button"
-                  onClick={openAiGuide}
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-primary transition-colors hover:bg-primary/10"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  AI Guide
-                </button>
-              </div>
-            )}
-          </div>
-
-          <button
+        <div className="flex items-center justify-self-end gap-2">
+          <Button
             type="button"
-            onClick={() => setSearchOpen((open) => !open)}
-            className="hidden h-10 w-10 items-center justify-center rounded-md border border-border/70 bg-surface/70 text-muted-foreground transition-colors hover:border-primary/45 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 lg:inline-flex"
-            aria-expanded={searchOpen}
-            aria-controls="header-search-panel"
-            aria-label="Search Baraza"
-            title="Search Baraza"
-          >
-            <Search className="h-4 w-4" />
-          </button>
-
-          <button
-            type="button"
+            variant="icon"
+            size="icon"
             onClick={toggleTheme}
-            className="hidden h-10 w-10 items-center justify-center rounded-md border border-border/70 bg-surface/70 text-foreground transition-colors hover:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 sm:inline-flex"
+            className="hidden sm:inline-flex"
             aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
           >
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
+          </Button>
 
-          <button
+          {account.authenticated ? (
+            <div className="hidden xl:block">
+              <ProfileMenu
+                displayName={account.displayName}
+                onLogout={() => void account.logout()}
+                showFund={showChain}
+              />
+            </div>
+          ) : (
+            <div className="hidden items-center gap-2 xl:flex">
+              <Button type="button" variant="outline" onClick={handleSignIn} disabled={!account.ready}>
+                Sign In
+              </Button>
+              <Button type="button" onClick={handleSignUp} disabled={!account.ready}>
+                Sign Up
+              </Button>
+            </div>
+          )}
+
+          <Button
+            type="button"
+            variant="icon"
+            size="icon"
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-md text-foreground transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 md:hidden"
+            className="xl:hidden"
             aria-label={mobileOpen ? "Close menu" : "Open menu"}
             aria-expanded={mobileOpen}
           >
-            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
         </div>
       </div>
 
-      {searchOpen && (
-        <div
-          id="header-search-panel"
-          className="absolute right-4 top-[calc(100%+0.5rem)] z-50 hidden w-[min(26rem,calc(100vw-2rem))] rounded-xl border border-border/70 bg-card p-3 shadow-[var(--shadow-deep)] lg:block"
-        >
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              submitSearch();
-            }}
-          >
-            <label className="sr-only" htmlFor="global-search">Search Baraza</label>
-            <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                id="global-search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search communities, SACCOs, M-Pesa..."
-                className="w-full rounded-lg border border-border bg-background/70 py-3 pl-10 pr-3 text-sm text-foreground outline-none transition-colors focus:border-primary"
-                autoFocus
-              />
-            </div>
-          </form>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {quickSearches.map((term) => (
-              <button
-                key={term}
-                type="button"
-                onClick={() => submitSearch(term)}
-                className="rounded-full border border-border/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
-              >
-                {term}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {mobileOpen && (
-        <div className="animate-fade-in border-t border-border/50 bg-background/95 backdrop-blur-xl md:hidden">
-          <nav className="container mx-auto flex flex-col gap-1 px-4 py-4" aria-label="Mobile navigation">
-            <div className="mb-3 border-b border-border/60 pb-4">
-              {account.authenticated ? (
-                <Link
-                  to="/profile"
-                  className="inline-flex min-h-11 w-full items-center gap-2 rounded-md bg-primary/10 px-3 text-sm font-semibold text-foreground"
-                >
+        <div className="border-t border-border bg-background xl:hidden">
+          <nav className="page-shell flex flex-col gap-1 py-4" aria-label="Site menu">
+            {navLinks.map((link) => (
+              <Link key={link.label} to={link.to} className="rounded-md px-3 py-2.5 text-sm font-semibold">
+                {link.label}
+              </Link>
+            ))}
+
+            <div className="my-2 border-t border-border" />
+
+            {account.authenticated ? (
+              <>
+                <p className="truncate px-3 pb-1 text-xs text-muted-foreground">{account.displayName}</p>
+                <Link to="/profile" className="inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm font-semibold">
                   <CircleUserRound className="h-4 w-4 text-primary" />
-                  {account.displayName}
+                  Account
                 </Link>
-              ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={handleLogin}
-                    disabled={!account.ready}
-                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-background text-sm font-semibold text-foreground disabled:cursor-wait disabled:opacity-60"
-                  >
-                    <LogIn className="h-4 w-4" />
-                    Log in
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCreateAccount}
-                    disabled={!account.ready}
-                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-primary text-sm font-bold text-primary-foreground disabled:cursor-wait disabled:opacity-60"
-                  >
-                    <UserPlus className="h-4 w-4" />
-                    Get started
-                  </button>
-                  <p className="col-span-2 mt-1 text-xs leading-5 text-muted-foreground">
-                    Continue with your phone number or email.
-                  </p>
-                </div>
-              )}
-            </div>
-            <div className="mb-3 border-b border-border/60 pb-4">
-              <ChainSelector variant="mobile" />
-            </div>
-            {navLinks.map((link) => {
-              const isActive =
-                location.pathname === link.path ||
-                (link.path !== "/" && location.pathname.startsWith(link.path));
-              return (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  onClick={() => setMobileOpen(false)}
-                  aria-current={isActive ? "page" : undefined}
-                  className={cn(
-                    "rounded-md px-3 py-2.5 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70",
-                    isActive
-                      ? "bg-primary/10 text-foreground"
-                      : "text-foreground/80 hover:bg-surface hover:text-foreground",
-                  )}
+                <Link to="/create/purpose" className="inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm font-semibold">
+                  <PlusCircle className="h-4 w-4 text-primary" />
+                  Launch a Group
+                </Link>
+                {showChain && (
+                  <div className="px-3 py-2">
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Fund
+                    </p>
+                    <ChainSelector variant="mobile" />
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => void account.logout()}
+                  className="inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-left text-sm font-semibold"
                 >
-                  {link.label}
-                </Link>
-              );
-            })}
+                  <LogOut className="h-4 w-4" />
+                  Log Out
+                </button>
+              </>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 px-3 pt-1">
+                <Button type="button" variant="outline" onClick={handleSignIn} disabled={!account.ready}>
+                  <LogIn className="h-4 w-4" />
+                  Sign In
+                </Button>
+                <Button type="button" onClick={handleSignUp} disabled={!account.ready}>
+                  <UserPlus className="h-4 w-4" />
+                  Sign Up
+                </Button>
+              </div>
+            )}
+
             <button
               type="button"
-              onClick={openTutorial}
-              className="inline-flex items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm font-semibold text-foreground/80 transition-all hover:bg-surface hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
+              onClick={toggleTheme}
+              className="inline-flex items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm font-semibold"
             >
-              <PlayCircle className="h-4 w-4" />
-              Video tutorial
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {theme === "dark" ? "Light Mode" : "Dark Mode"}
             </button>
-            <button
-              type="button"
-              onClick={openAiGuide}
-              className="inline-flex items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm font-semibold text-primary transition-all hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-            >
-              <Sparkles className="h-4 w-4" />
-              Ask Akili
-            </button>
-            <form
-              className="relative mt-2"
-              onSubmit={(event) => {
-                event.preventDefault();
-                submitSearch();
-              }}
-            >
-              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search communities"
-                className="w-full rounded-lg border border-border bg-background/70 py-3 pl-10 pr-3 text-sm text-foreground outline-none focus:border-primary"
-                aria-label="Search communities"
-              />
-            </form>
-            <div className="mt-2 flex flex-col gap-2 border-t border-border/50 pt-3">
-              <button
-                type="button"
-                onClick={toggleTheme}
-                className="inline-flex items-center gap-2 rounded-md px-3 py-2.5 text-left text-sm font-semibold text-foreground/80 transition-all hover:bg-surface hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
-                aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-              >
-                {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                {theme === "dark" ? "Light mode" : "Dark mode"}
-              </button>
-            </div>
           </nav>
         </div>
       )}

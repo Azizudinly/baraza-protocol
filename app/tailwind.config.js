@@ -7,20 +7,26 @@ export default {
 	theme: {
 		container: {
 			center: true,
-			padding: '1rem',
+			padding: {
+				DEFAULT: '1rem',
+				sm: '1.5rem',
+				lg: '2.5rem',
+				xl: '3.5rem',
+				'2xl': '4rem',
+			},
 			screens: {
 				sm: '640px',
 				md: '768px',
 				lg: '1024px',
 				xl: '1280px',
-				'2xl': '1440px',
+				'2xl': '1920px',
 			}
 		},
 		extend: {
 			fontFamily: {
-				sans: ['DM Sans', 'system-ui', 'sans-serif'],
-				display: ['Syne', 'system-ui', 'sans-serif'],
-				mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+				sans: ['Geist', 'system-ui', 'sans-serif'],
+				display: ['Geist', 'system-ui', 'sans-serif'],
+				mono: ['Geist Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
 			},
 			colors: {
 				border: 'hsl(var(--border))',
