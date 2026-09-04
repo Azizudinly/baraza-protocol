@@ -139,7 +139,7 @@ export default async function handler(req: Request): Promise<Response> {
   const writer = writable.getWriter();
   const encoder = new TextEncoder();
 
-  (async () => {
+  void (async () => {
     try {
       if (format === 'csv') {
         await writer.write(encoder.encode('date,reference_id,reference_type,debit_account,credit_account,amount_minor,currency\n'));

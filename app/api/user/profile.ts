@@ -141,7 +141,7 @@ export default async function handler(req: Request): Promise<Response> {
       };
     }
 
-    let targetId = existing?.id;
+    const targetId = existing?.id;
     if (!targetId) {
       // Create if doesn't exist
       const toInsert = {
