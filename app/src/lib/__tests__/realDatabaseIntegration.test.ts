@@ -23,7 +23,18 @@ const LIVE_DB_URL = 'http://localhost:54321';
 const SERVICE_KEY =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE2MDAwMDAwMDAsImV4cCI6MjUwMDAwMDAwMH0.YEHFlsDyYXjxJ5oIZyJ6HuS62T6qaal7bGnWI5GxbRs';
 
-describe('Live Docker End-to-End Stack: Real PostgreSQL & PostgREST', () => {
+let isLiveDbUp = false;
+try {
+  const check = await fetch(`${LIVE_DB_URL}/rest/v1/communities?select=count`, {
+    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+    signal: AbortSignal.timeout(1500),
+  });
+  isLiveDbUp = check.status === 200;
+} catch {
+  isLiveDbUp = false;
+}
+
+describe.skipIf(!isLiveDbUp)('Live Docker End-to-End Stack: Real PostgreSQL & PostgREST', () => {
   beforeAll(async () => {
     process.env.SUPABASE_URL = LIVE_DB_URL;
     process.env.SUPABASE_SERVICE_ROLE_KEY = SERVICE_KEY;
