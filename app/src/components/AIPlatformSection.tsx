@@ -1,103 +1,145 @@
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { ArrowRight, Bot, Compass, LayoutDashboard, Sparkles, WalletCards } from "lucide-react";
-import { useAkiliChat } from "@/akili/useAkiliChat";
+import { ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toTitleCase } from "@/lib/utils";
 
-const platformLinks = [
-  {
-    icon: Compass,
-    label: "Discover",
-    title: "Find active communities",
-    detail: "Browse communities — filter by type and payment rail.",
-    to: "/communities",
-  },
-  {
-    icon: WalletCards,
-    label: "Launch",
-    title: "Set group rules",
-    detail: "Set dues, quorum, voting windows, and payment paths in one guided flow.",
-    to: "/create",
-  },
-  {
-    icon: LayoutDashboard,
-    label: "Operate",
-    title: "Run group fund decisions",
-    detail: "Track members, proposals, balances, and releases from the dashboard.",
-    to: "/profile",
-  },
+const stats = [
+  { value: 27, label: toTitleCase("Group types, from chama to SACCO") },
+  { value: 4, label: toTitleCase("Markets: Kenya, Uganda, Tanzania, Rwanda") },
+  { value: 0, label: toTitleCase("Seed phrases required to join") },
 ];
 
-export default function AIPlatformSection() {
-  const { open } = useAkiliChat();
+function prefersReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function useInView(threshold = 0.4) {
+  const ref = useRef<HTMLDListElement>(null);
+  const [inView, setInView] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setInView(entry.isIntersecting),
+      { threshold },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [threshold]);
+
+  return { ref, inView };
+}
+
+function CountStat({
+  value,
+  label,
+  active,
+}: {
+  value: number;
+  label: string;
+  active: boolean;
+}) {
+  const [display, setDisplay] = useState(0);
+  const displayRef = useRef(0);
+
+  useEffect(() => {
+    const target = active ? value : 0;
+    if (prefersReducedMotion()) {
+      displayRef.current = target;
+      setDisplay(target);
+      return;
+    }
+
+    const from = displayRef.current;
+    if (from === target) return;
+
+    let raf = 0;
+    const started = performance.now();
+    const duration = 700;
+    const step = (now: number) => {
+      const t = Math.min(1, (now - started) / duration);
+      const eased = 1 - (1 - t) ** 3;
+      const next = Math.round(from + (target - from) * eased);
+      displayRef.current = next;
+      setDisplay(next);
+      if (t < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [active, value]);
 
   return (
-    <section className="relative py-8 md:py-12" id="ai-platform">
-      <div className="container mx-auto max-w-7xl px-4">
-        <motion.div
-          initial={{ y: 18, opacity: 0 }}
-          whileInView={{ y: 0, opacity: 1 }}
-          viewport={{ once: true, amount: 0 }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr] lg:items-stretch"
-        >
-          <div className="rounded-2xl border border-primary/20 bg-card p-5 shadow-[var(--shadow-card)] md:p-6">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3 py-1.5 text-xs font-bold uppercase tracking-widest text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              Baraza platform
+    <div className="flex flex-col items-center text-center">
+      <dt
+        className="text-center font-display text-5xl font-black leading-none tracking-tight tabular-nums md:text-6xl"
+        aria-label={String(value)}
+      >
+        {display}
+      </dt>
+      <dd className="mx-auto mt-2 max-w-[14rem] text-center text-sm leading-6 opacity-75">{label}</dd>
+    </div>
+  );
+}
+
+export default function AIPlatformSection() {
+  const { ref, inView } = useInView();
+
+  return (
+    <section
+      className="audience-band relative z-10 scroll-mt-20 bg-primary text-foreground"
+      id="who-its-for"
+    >
+      <div className="page-shell">
+        <div className="grid items-center gap-10 py-6 sm:py-8 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.35fr)] lg:gap-12 lg:py-8">
+          <div className="relative z-10 mx-auto flex w-full max-w-[42rem] flex-col items-center lg:mx-0 lg:max-w-none">
+            <figure className="relative -mt-20 mb-6 w-[min(100%,36rem)] origin-bottom rotate-[-6deg] bg-white p-3 shadow-[0_18px_40px_hsl(0_0%_0%/0.22)] sm:-mt-28 sm:mb-8 sm:w-[min(100%,40rem)] sm:p-4 lg:-mt-40 lg:w-[min(100%,42rem)]">
+              <img
+                src="/audience/group.jpg"
+                alt="A chama gathered around a laptop, reviewing the group’s money together"
+                width={1024}
+                height={768}
+                className="aspect-[4/3] w-full object-cover"
+              />
+            </figure>
+            <div className="relative z-10 mt-12 flex w-full flex-col items-center justify-center gap-3 sm:mt-14 sm:flex-row">
+              <Button asChild size="lg">
+                <Link to="/create/purpose">
+                  Launch a Group
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="lg">
+                <Link to="/communities">Browse Groups</Link>
+              </Button>
             </div>
-            <h2 className="font-display text-2xl font-black leading-tight md:text-3xl">
-              Website, operating platform, and AI guide in one clean flow.
+          </div>
+
+          <div className="text-center">
+            <h2 className="font-display text-3xl font-black leading-[1.05] tracking-tight md:text-5xl">
+              {toTitleCase("Built for groups that already exist.")}
             </h2>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base md:leading-7">
-              Visitors can understand the model, organisers can launch a community, and members can
-              vote and track funds — Akili is available when someone needs a next step.
+            <p className="mt-5 text-base leading-7 opacity-85 sm:text-lg sm:leading-8">
+              For treasurers who are tired of chasing dues in a chat thread. Chamas, SACCOs, and
+              cooperatives already collect money and decide together. Baraza puts those two jobs in
+              one place: members pay in, vote on spending, and see the same balance. SACCOs get an
+              extra license check before a group can launch.
             </p>
 
-            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-              <button
-                type="button"
-                onClick={() => open("Help me set up my community on Baraza")}
-                className="btn-warm inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-extrabold"
-              >
-                Ask Akili
-                <Bot className="h-4 w-4" />
-              </button>
-              <Link
-                to="/communities"
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-border/70 px-5 py-3 text-sm font-extrabold transition-colors hover:border-primary/50"
-              >
-                Enter platform
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
+            <dl ref={ref} className="mt-10 grid justify-items-center gap-8 text-center sm:grid-cols-3">
+              {stats.map((stat) => (
+                <CountStat
+                  key={stat.label}
+                  value={stat.value}
+                  label={stat.label}
+                  active={inView}
+                />
+              ))}
+            </dl>
           </div>
-
-          {/* Mobile: one card per swipe instead of a long stack */}
-          <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-3 md:overflow-visible md:px-0 md:pb-0">
-            {platformLinks.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.label}
-                  to={item.to}
-                  className="group min-w-[78%] snap-start rounded-2xl border border-border/70 bg-card/70 p-4 transition-all hover:border-primary/40 hover:bg-surface md:min-w-0"
-                >
-                  <div className="mb-4 flex items-center justify-between">
-                    <div className="grid h-10 w-10 place-items-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <span className="text-[0.65rem] font-bold uppercase tracking-widest text-primary">
-                      {item.label}
-                    </span>
-                  </div>
-                  <h3 className="font-display text-lg font-bold leading-tight">{item.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.detail}</p>
-                  <ArrowRight className="mt-4 h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary" />
-                </Link>
-              );
-            })}
-          </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );

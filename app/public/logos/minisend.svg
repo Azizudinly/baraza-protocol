@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72" fill="none" role="img">
+  <title>Minisend</title>
+  <g fill="#7C3AED">
+    <rect x="8.5" y="16" width="13" height="40" rx="6.5" transform="rotate(-20 15 36)"/>
+    <rect x="29.5" y="12" width="13" height="48" rx="6.5"/>
+    <rect x="50.5" y="16" width="13" height="40" rx="6.5" transform="rotate(20 57 36)"/>
+  </g>
+</svg>

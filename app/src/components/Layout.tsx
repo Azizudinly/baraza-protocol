@@ -20,7 +20,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <Header />
       <main
         id="main-content"
-        className="flex-1 pt-14 pb-24 md:pb-0"
+        className="flex-1 pt-16 pb-24 md:pb-0"
         tabIndex={-1}
       >
         {children}

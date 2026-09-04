@@ -3,28 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#181303" />
+    <meta name="theme-color" content="#ffffff" />
     <meta name="color-scheme" content="light dark" />
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <script>
       (() => {
         try {
-          const stored = window.localStorage.getItem("baraza:theme");
+          const stored = window.localStorage.getItem("baraza:theme-preference");
+          const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
           const theme = stored === "light" || stored === "dark"
             ? stored
-            : "dark";
+            : (systemDark ? "dark" : "light");
           document.documentElement.classList.toggle("dark", theme === "dark");
           document.documentElement.style.colorScheme = theme;
           document
             .querySelector('meta[name="theme-color"]')
-            ?.setAttribute("content", theme === "dark" ? "#181303" : "#f9f9f9");
+            ?.setAttribute("content", theme === "dark" ? "#000000" : "#ffffff");
         } catch {
-          document.documentElement.classList.add("dark");
+          const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          document.documentElement.classList.toggle("dark", dark);
         }
       })();
     </script>
 
-    <title>Baraza - Treasury tools for DAOs, communities &amp; SACCOs</title>
+    <title>Baraza - Treasury Tools for DAOs, Communities &amp; SACCOs</title>
     <meta name="description" content="Baraza is a phone-first treasury and governance platform for DAOs, communities, SACCOs, and co-operatives. Collect M-Pesa dues in KSh, submit proposals, vote, and manage shared funds." />
     <meta name="keywords" content="DAO, community, chama, SACCO, welfare group, cooperative, treasury, governance, KES, M-Pesa, Kenya, Africa" />
     <meta name="author" content="Baraza Protocol" />
@@ -35,7 +37,7 @@
     <meta property="og:site_name" content="Baraza Protocol" />
     <meta property="og:locale" content="en_KE" />
     <meta property="og:url" content="https://barazaprotocol.com/" />
-    <meta property="og:title" content="Baraza - Treasury tools for DAOs, communities &amp; SACCOs" />
+    <meta property="og:title" content="Baraza - Treasury Tools for DAOs, Communities &amp; SACCOs" />
     <meta property="og:description" content="Phone-first KSh treasury and governance for DAOs, communities, SACCOs, and co-ops. Every vote and shilling stays visible." />
     <meta property="og:image" content="https://barazaprotocol.com/og-image.svg" />
     <meta property="og:image:type" content="image/svg+xml" />
@@ -45,7 +47,7 @@
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Baraza - Treasury tools for DAOs, communities &amp; SACCOs" />
+    <meta name="twitter:title" content="Baraza - Treasury Tools for DAOs, Communities &amp; SACCOs" />
     <meta name="twitter:description" content="Phone-first KSh treasury and governance for DAOs, communities, SACCOs, and co-ops. Every vote and shilling stays visible." />
     <meta name="twitter:image" content="https://barazaprotocol.com/og-image.svg" />
 
@@ -54,7 +56,7 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&display=swap" rel="stylesheet" />
 
     <script type="application/ld+json">
       {
