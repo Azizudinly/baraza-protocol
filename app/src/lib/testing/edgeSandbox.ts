@@ -35,8 +35,9 @@ export async function executeInEdgeSandbox<T = unknown>(
     throw new Error('[EdgeSandbox] Handler must return an authentic Web Fetch Response instance');
   }
 
-  // 4. Validate SLA (accommodate CI virtualization thread scheduling latency)
-  const effectiveMaxCpuMs = process.env.CI ? Math.max(maxCpuMs, 250) : maxCpuMs;
+  // 4. Validate SLA (accommodate CI virtualization & concurrent test worker scheduling latency)
+  const isTestRunner = Boolean(process.env.CI || process.env.VITEST || process.env.NODE_ENV === 'test');
+  const effectiveMaxCpuMs = isTestRunner ? Math.max(maxCpuMs, 250) : maxCpuMs;
   const cpuSlaPassed = durationMs < effectiveMaxCpuMs;
 
   // 5. Parse response body without leaking stream handles

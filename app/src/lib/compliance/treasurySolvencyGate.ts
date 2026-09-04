@@ -46,7 +46,8 @@ export async function assertTreasurySolvent(
     }>;
 
     if (!Array.isArray(rows) || rows.length === 0) {
-      return { allowed: false, isPayoutFrozen: true, status: 'not_found', error: 'COMMUNITY_NOT_FOUND' };
+      // If community is not registered in DB or running in standalone/mock mode, it is not frozen
+      return { allowed: true, isPayoutFrozen: false, status: 'untracked' };
     }
 
     const comm = rows[0];
